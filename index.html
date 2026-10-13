@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>MechHub | Mechanical Engineering Study Hub</title>
-<meta name="description" content="Everything You Need to Study Engineering. A central hub for mechanical engineering courses, lecture notes, and class resources.">
+<meta name="description" content="Your central destination for mechanical engineering courses, lecture notes, and class resources.">
 <meta name="theme-color" content="#151515">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
@@ -17,28 +18,28 @@
 <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
 <style>
 /* ====== Design tokens — MechHub identity (black / green / red / white) ======
-   One primary colour (green), brand black for dark surfaces and headings, neutrals for the rest.
-   Every colour below is defined once here and reused everywhere via var(). */
+   Primary (green), brand black for dark surfaces, neutrals for the rest. */
 :root{
-  --ink:#151515;        /* brand black: header, hero, footer, headings, body text */
-  --green:#168447;      /* primary on light surfaces: buttons, icons, focus, card accents */
-  --green-d:#126B3A;    /* primary hover */
-  --green-l:#22A45D;    /* primary on dark surfaces: accents, focus rings */
-  --tint:#E9F5EE;       /* light green tint: icon tiles, highlighted block */
-  --paper:#F5F6F5;      /* page background */
-  --surface:#FFFFFF;    /* cards */
-  --steel:#4F5651;      /* secondary text on light surfaces */
-  --line:#D2D6D3;       /* borders on light surfaces */
-  --on-dark:#FFFFFF;    /* text on dark surfaces */
-  --on-dark-2:#D5D9D6;  /* secondary text on dark surfaces */
-  --on-dark-3:#A9B0AB;  /* tertiary text on dark surfaces */
-  --dark-hair:rgba(255,255,255,.12);  /* dividers / hover fill on dark surfaces */
-  --dark-line:rgba(255,255,255,.35);  /* outlines on dark surfaces */
-  --grid:rgba(255,255,255,.06);       /* hero blueprint grid */
+  --ink:#151515;
+  --green:#168447;
+  --green-d:#126B3A;
+  --green-l:#22A45D;
+  --tint:#E9F5EE;
+  --paper:#F5F6F5;
+  --surface:#FFFFFF;
+  --steel:#4F5651;
+  --line:#D2D6D3;
+  --on-dark:#FFFFFF;
+  --on-dark-2:#D5D9D6;
+  --on-dark-3:#A9B0AB;
+  --dark-hair:rgba(255,255,255,.12);
+  --dark-line:rgba(255,255,255,.35);
+  --grid:rgba(255,255,255,.06);
   --shadow-1:0 2px 8px rgba(21,21,21,.06);
   --shadow-2:0 10px 24px rgba(21,21,21,.12);
-  /* typography: a single family; sizes/weights below are reused by element type */
   --font:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --radius-card:12px;
+  --radius-btn:8px;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:76px}
@@ -48,9 +49,19 @@ a{color:inherit}
 .wrap{width:min(1120px,100% - 40px);margin-inline:auto}
 :focus-visible{outline:3px solid var(--green);outline-offset:3px}
 .site-header :focus-visible,.hero :focus-visible,.site-footer :focus-visible{outline-color:var(--green-l)}
+img{max-width:100%;height:auto}
 
-/* Buttons (one style everywhere) */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:0 20px;border-radius:8px;background:var(--green);color:var(--on-dark);font-family:inherit;font-size:.95rem;font-weight:600;line-height:1.2;text-decoration:none;border:1px solid transparent;transition:background .2s,transform .2s}
+/* Skip to content */
+.skip-link{position:absolute;top:-100px;left:12px;z-index:100;padding:10px 18px;border-radius:6px;background:var(--green);color:#fff;font-weight:700;text-decoration:none;transition:top .15s}
+.skip-link:focus{top:12px}
+
+/* Offline banner */
+#offline-banner{display:none;align-items:center;gap:10px;justify-content:center;padding:10px 16px;background:#7b3800;color:#fff;font-size:.9rem;text-align:center}
+#offline-banner svg{flex:none;width:18px;height:18px}
+body.offline #offline-banner{display:flex}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:0 20px;border-radius:var(--radius-btn);background:var(--green);color:var(--on-dark);font-family:inherit;font-size:.95rem;font-weight:600;line-height:1.2;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:background .2s,transform .2s}
 .btn:hover{background:var(--green-d)}
 .btn svg{width:18px;height:18px;flex:none}
 .hero .btn{border-color:var(--dark-line)}
@@ -68,7 +79,7 @@ a{color:inherit}
 .fb-text{display:flex;flex-direction:column;line-height:1.25}
 .fb-text small{font-size:.8rem;color:var(--on-dark-3)}
 
-/* Course card art: same hover motion per course, one colour */
+/* Animated art on card hover */
 .card .art{position:absolute;right:-14px;bottom:-14px;width:150px;height:150px;color:var(--green);opacity:.1;z-index:-1;pointer-events:none;transition:transform .5s ease,opacity .3s}
 .card:is(:hover,:focus-within,:active) .art{opacity:.2}
 [data-t=economy]:is(:hover,:focus-within,:active) .art{transform:translateY(-8px)}
@@ -82,7 +93,8 @@ a{color:inherit}
 [data-t=design2]:is(:hover,:focus-within,:active) .art{transform:rotate(-15deg) scale(1.05)}
 @media (hover:none){.card .art{opacity:.14}}
 @media (prefers-reduced-motion:reduce){.card .art{transform:none!important}}
-.nav-link{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--dark-line);border-radius:8px;color:var(--on-dark);font-weight:600;font-size:.95rem;text-decoration:none;transition:background .2s}
+
+.nav-link{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--dark-line);border-radius:var(--radius-btn);color:var(--on-dark);font-weight:600;font-size:.95rem;text-decoration:none;transition:background .2s}
 .nav-link:hover{background:var(--dark-hair)}
 
 /* Hero */
@@ -96,9 +108,23 @@ a{color:inherit}
 /* Install button (PWA) */
 .hero-actions{display:flex;flex-wrap:wrap;gap:12px}
 .btn[hidden],.install-tip[hidden]{display:none}
-.btn-ghost{background:transparent;cursor:pointer}
+.btn-ghost{background:transparent}
 .btn-ghost:hover{background:var(--dark-hair)}
-.install-tip{margin-top:16px;max-width:52ch;padding:12px 16px;border:1px solid var(--dark-line);border-radius:8px;background:var(--dark-hair);color:var(--on-dark-2);font-size:.95rem}
+.install-tip{margin-top:16px;max-width:52ch;padding:12px 16px;border:1px solid var(--dark-line);border-radius:var(--radius-btn);background:var(--dark-hair);color:var(--on-dark-2);font-size:.95rem}
+
+/* ── Search / filter bar ─────────────────────────────────────────────────── */
+.search-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:32px 0 8px}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--steel);pointer-events:none}
+#search{width:100%;min-height:44px;padding:0 16px 0 44px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem;appearance:none;transition:border-color .2s}
+#search:focus{outline:none;border-color:var(--green)}
+#search::placeholder{color:var(--steel)}
+.filter-chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:100px;border:1.5px solid var(--line);background:var(--surface);color:var(--steel);font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.chip:hover{border-color:var(--green-d);color:var(--green-d)}
+.chip[aria-pressed=true]{background:var(--green);border-color:var(--green);color:#fff}
+#no-results{display:none;text-align:center;padding:48px 0;color:var(--steel)}
+#no-results.visible{display:block}
 
 /* Resources */
 #resources{padding:56px 0 72px}
@@ -109,11 +135,14 @@ a{color:inherit}
 .feature h2{font-size:clamp(1.35rem,3.5vw,1.8rem)}
 .feature p{margin:6px 0 0;color:var(--steel);max-width:56ch}
 .feature .btn{margin-left:auto;flex:none}
-.section-title{font-size:clamp(1.6rem,4vw,2.2rem);margin:56px 0 24px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+
+/* Section title + category label */
+.section-title{font-size:clamp(1.6rem,4vw,2.2rem);margin:56px 0 0;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+.category-label{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--steel);margin:32px 0 10px}
 .grid{list-style:none;margin:0;padding:0;display:grid;gap:20px;grid-template-columns:1fr}
 
-/* Course cards: identical colours for every course. Name = primary, code = secondary (only when it exists) */
-.card{position:relative;isolation:isolate;height:100%;display:flex;flex-direction:column;gap:12px;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-1);transition:transform .2s,border-color .2s,box-shadow .2s}
+/* Course cards */
+.card{position:relative;isolation:isolate;height:100%;display:flex;flex-direction:column;gap:12px;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-1);transition:transform .2s,border-color .2s,box-shadow .2s}
 .card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;border-radius:11px 11px 0 0;background:var(--green)}
 .card:hover{transform:translateY(-3px);border-color:var(--green);box-shadow:var(--shadow-2)}
 .card-top{display:flex;align-items:flex-start}
@@ -130,6 +159,12 @@ a{color:inherit}
 .site-footer .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 24px}
 .site-footer strong{color:var(--on-dark);font-size:1.1rem;font-weight:700}
 
+/* Stat strip */
+.stat-strip{display:flex;gap:28px;flex-wrap:wrap;margin-top:32px}
+.stat{display:flex;flex-direction:column;align-items:flex-start}
+.stat-num{font-size:1.9rem;font-weight:800;line-height:1;color:var(--green-l)}
+.stat-lbl{font-size:.82rem;color:var(--on-dark-3);margin-top:2px;letter-spacing:.04em}
+
 @media (min-width:600px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media (min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:360px){
@@ -142,6 +177,8 @@ a{color:inherit}
   .feature{flex-direction:column;align-items:flex-start;padding:22px}
   .feature .btn{margin-left:0;width:100%}
   .hero .btn{width:100%}
+  .search-bar{flex-direction:column;align-items:stretch}
+  .search-wrap{min-width:auto}
 }
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
@@ -151,6 +188,15 @@ a{color:inherit}
 </style>
 </head>
 <body>
+
+<!-- Skip-navigation for keyboard users -->
+<a class="skip-link" href="#resources">Skip to courses</a>
+
+<!-- Offline banner (shown via JS when navigator.onLine becomes false) -->
+<div id="offline-banner" role="status" aria-live="polite">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+  You're offline. MechHub is available, but course sites require an internet connection.
+</div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="flag-ps" viewBox="0 0 40 20">
@@ -201,13 +247,41 @@ a{color:inherit}
         </button>
       </div>
       <div class="install-tip" id="ios-tip" role="note" hidden>To install MechHub on iPhone or iPad, open this page in Safari, tap the <strong>Share</strong> button, then choose <strong>Add to Home Screen</strong>.</div>
+
+      <!-- Stats strip -->
+      <div class="stat-strip" aria-label="Library statistics">
+        <div class="stat"><span class="stat-num" id="stat-courses">9</span><span class="stat-lbl">Courses</span></div>
+        <div class="stat"><span class="stat-num">1</span><span class="stat-lbl">Shared Drive</span></div>
+        <div class="stat"><span class="stat-num">∞</span><span class="stat-lbl">Resources</span></div>
+      </div>
     </div>
   </section>
 
   <section id="resources" aria-label="Study resources">
     <div class="wrap">
       <div id="drive-slot"></div>
+
       <h2 class="section-title">Explore Your Courses</h2>
+
+      <!-- Search & filter -->
+      <div class="search-bar" role="search" aria-label="Filter courses">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="search" id="search" placeholder="Search courses…" aria-label="Search courses" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter by category">
+          <button type="button" class="chip" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="chip" data-filter="thermal" aria-pressed="false">Thermal</button>
+          <button type="button" class="chip" data-filter="design" aria-pressed="false">Design</button>
+          <button type="button" class="chip" data-filter="mechanics" aria-pressed="false">Mechanics</button>
+          <button type="button" class="chip" data-filter="math" aria-pressed="false">Math &amp; EE</button>
+        </div>
+      </div>
+
+      <div id="no-results" role="status" aria-live="polite">
+        <p>No courses match your search. Try a different keyword or clear the filter.</p>
+      </div>
+
       <ul class="grid" id="course-grid"></ul>
     </div>
   </section>
@@ -222,7 +296,7 @@ a{color:inherit}
 </footer>
 
 <script>
-/* ====== Central configuration: edit titles, codes, descriptions or URLs here ====== */
+/* ====== Central configuration — edit titles, codes, descriptions or URLs here ====== */
 const DRIVE = {
   title: 'Class Resources &amp; Google Drive',
   description: 'Access shared class files, lecture materials, and batch resources.',
@@ -230,67 +304,79 @@ const DRIVE = {
   url: 'https://drive.google.com/drive/folders/1LVn5McTEaALZz_izfzxELduDn-HFU_hd'
 };
 
-/* Course code: fill in only when the real code is known; an empty code simply shows nothing. */
-/* Display order: Heat Transfer, Fluid Mechanics, Measurements, BME (Electrical Machines), Design 2, Economy; remaining courses keep their original order. */
+/**
+ * COURSES
+ * Each entry must have:
+ *   title       — display name
+ *   code        — course code (empty string → not shown)
+ *   icon        — key into ICONS / ART maps
+ *   category    — one of: thermal | design | mechanics | math (used by filter chips)
+ *   description — short description
+ *   url         — authoritative published URL (opens in new tab)
+ *
+ * Display order below is intentional (most-current semester first).
+ */
 const COURSES = [
-  { title: 'Heat Transfer', code: '', icon: 'heat',
+  { title: 'Heat Transfer',               code: '',         icon: 'heat',       category: 'thermal',
     description: 'Conduction, convection, and radiation in engineering systems.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/Heat-Transfer/' },
-  { title: 'Fluid Mechanics II', code: '', icon: 'fluid',
+  { title: 'Fluid Mechanics II',          code: '',         icon: 'fluid',      category: 'mechanics',
     description: 'Advanced fluid behavior, flow analysis, and engineering applications.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/Fluid2/' },
-  { title: 'Mechanical Measurements', code: '', icon: 'measure',
+  { title: 'Mechanical Measurements',     code: '',         icon: 'measure',    category: 'mechanics',
     description: 'Measurement principles, instruments, and experimental methods.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/measurement/' },
-  { title: 'Basics of Electrical Machines', code: 'PME 302', icon: 'electrical',
+  { title: 'Basics of Electrical Machines', code: 'PME 302', icon: 'electrical', category: 'math',
     description: 'Introductory concepts of electrical machines and their applications.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/PME302/' },
-  { title: 'Mechanical Design II', code: '', icon: 'design2',
+  { title: 'Mechanical Design II',        code: '',         icon: 'design2',    category: 'design',
     description: 'Further topics in mechanical design and machine component analysis.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/design2/' },
-  { title: 'Engineering Economy', code: '', icon: 'economy',
+  { title: 'Engineering Economy',         code: '',         icon: 'economy',    category: 'math',
     description: 'Cost analysis and economic decision-making for engineering projects.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/economy/' },
-  { title: 'Thermodynamics III', code: 'THERMO 3', icon: 'thermo',
+  { title: 'Thermodynamics III',          code: 'THERMO 3', icon: 'thermo',     category: 'thermal',
     description: 'Advanced thermodynamic principles, cycles, and energy systems.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/tageldien/' },
-  { title: 'Mechanical Design I', code: 'ME 307', icon: 'design1',
+  { title: 'Mechanical Design I',         code: 'ME 307',   icon: 'design1',    category: 'design',
     description: 'Fundamentals of designing machine elements and mechanical components.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/my-website/' },
-  { title: 'Numerical Methods', code: 'MATH 302', icon: 'numerical',
+  { title: 'Numerical Methods',           code: 'MATH 302', icon: 'numerical',  category: 'math',
     description: 'Computational techniques for solving engineering mathematics problems.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/math302/' }
 ];
 
-/* ====== Icons (inline SVG paths, 24x24 grid) ====== */
+/* ====== Icons (inline SVG paths, 24×24 grid) ====== */
 const ICONS = {
-  drive: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-  economy: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
-  thermo: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
-  design1: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
-  numerical: '<path d="M18 5H6l6 7-6 7h12"/>',
-  electrical: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
-  fluid: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 15a2.8 2.8 0 0 0 2.5 2"/>',
-  measure: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1"/>',
-  heat: '<path d="M8 3c0 3 3 3 3 6s-3 3-3 6M14 3c0 3 3 3 3 6s-3 3-3 6"/><path d="M5 20h14"/>',
-  design2: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>'
+  drive:    '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  economy:  '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+  thermo:   '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
+  design1:  '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  numerical:'<path d="M18 5H6l6 7-6 7h12"/>',
+  electrical:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  fluid:    '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 15a2.8 2.8 0 0 0 2.5 2"/>',
+  measure:  '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1"/>',
+  heat:     '<path d="M8 3c0 3 3 3 3 6s-3 3-3 6M14 3c0 3 3 3 3 6s-3 3-3 6"/><path d="M5 20h14"/>',
+  design2:  '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>'
 };
 const ART = {
-  economy: '<rect x="12" y="72" width="16" height="42" fill="currentColor" stroke="none"/><rect x="38" y="54" width="16" height="60" fill="currentColor" stroke="none"/><rect x="64" y="62" width="16" height="52" fill="currentColor" stroke="none"/><rect x="90" y="30" width="16" height="84" fill="currentColor" stroke="none"/><path d="M8 58l32-24 26 10 48-34M100 10h14v14"/>',
-  thermo: '<path d="M22 92C28 46 62 22 102 32c-4 32-14 58-80 60z"/><path d="M96 24l8 8-10 4M10 40c14-8 14 8 28 0M10 52c14-8 14 8 28 0"/>',
-  design1: '<circle cx="62" cy="58" r="34" stroke-width="9" stroke-dasharray="7 6"/><circle cx="62" cy="58" r="26"/><circle cx="62" cy="58" r="9"/><path d="M8 112h108M8 106v12M116 106v12"/>',
-  numerical: '<path d="M0 30h120M0 60h120M0 90h120M30 0v120M60 0v120M90 0v120" stroke-width="1"/><path d="M6 100C32 14 62 124 114 22" stroke-width="3"/><circle cx="32" cy="46" r="4" fill="currentColor"/><circle cx="62" cy="70" r="4" fill="currentColor"/><circle cx="90" cy="46" r="4" fill="currentColor"/>',
-  electrical: '<path d="M4 74c0-22 20-22 20 0s20 22 20 0 20-22 20 0 20 22 20 0 20-22 20 0" stroke-width="3"/><path d="M24 50a38 38 0 0 1 72 0M12 38a52 52 0 0 1 96 0"/><path d="M62 86l-9 14h14l-9 14"/>',
-  fluid: '<path d="M0 34c20-14 40 14 60 0s40-14 60 0M0 62c20-14 40 14 60 0s40-14 60 0M0 90c20-14 40 14 60 0s40-14 60 0" stroke-width="3"/><circle cx="60" cy="62" r="13" fill="currentColor" stroke="none"/>',
-  measure: '<path d="M18 92a44 44 0 1 1 88 0" stroke-width="3"/><path d="M26 92a36 36 0 1 1 72 0" stroke-width="7" stroke-dasharray="2 7"/><path d="M62 92l24-32" stroke-width="4"/><circle cx="62" cy="92" r="6" fill="currentColor"/>',
-  heat: '<path d="M26 108c-12-16 12-28 0-44s12-28 0-44M60 108c-12-16 12-28 0-44s12-28 0-44M94 108c-12-16 12-28 0-44s12-28 0-44" stroke-width="3"/>',
-  design2: '<path d="M60 14l38 22v44L60 102 22 80V36z"/><path d="M22 36l38 22 38-22M60 58v44"/><circle cx="60" cy="58" r="12"/><path d="M60 102v14M30 114h60"/>'
+  economy:  '<rect x="12" y="72" width="16" height="42" fill="currentColor" stroke="none"/><rect x="38" y="54" width="16" height="60" fill="currentColor" stroke="none"/><rect x="64" y="62" width="16" height="52" fill="currentColor" stroke="none"/><rect x="90" y="30" width="16" height="84" fill="currentColor" stroke="none"/><path d="M8 58l32-24 26 10 48-34M100 10h14v14"/>',
+  thermo:   '<path d="M22 92C28 46 62 22 102 32c-4 32-14 58-80 60z"/><path d="M96 24l8 8-10 4M10 40c14-8 14 8 28 0M10 52c14-8 14 8 28 0"/>',
+  design1:  '<circle cx="62" cy="58" r="34" stroke-width="9" stroke-dasharray="7 6"/><circle cx="62" cy="58" r="26"/><circle cx="62" cy="58" r="9"/><path d="M8 112h108M8 106v12M116 106v12"/>',
+  numerical:'<path d="M0 30h120M0 60h120M0 90h120M30 0v120M60 0v120M90 0v120" stroke-width="1"/><path d="M6 100C32 14 62 124 114 22" stroke-width="3"/><circle cx="32" cy="46" r="4" fill="currentColor"/><circle cx="62" cy="70" r="4" fill="currentColor"/><circle cx="90" cy="46" r="4" fill="currentColor"/>',
+  electrical:'<path d="M4 74c0-22 20-22 20 0s20 22 20 0 20-22 20 0 20 22 20 0 20-22 20 0" stroke-width="3"/><path d="M24 50a38 38 0 0 1 72 0M12 38a52 52 0 0 1 96 0"/><path d="M62 86l-9 14h14l-9 14"/>',
+  fluid:    '<path d="M0 34c20-14 40 14 60 0s40-14 60 0M0 62c20-14 40 14 60 0s40-14 60 0M0 90c20-14 40 14 60 0s40-14 60 0" stroke-width="3"/><circle cx="60" cy="62" r="13" fill="currentColor" stroke="none"/>',
+  measure:  '<path d="M18 92a44 44 0 1 1 88 0" stroke-width="3"/><path d="M26 92a36 36 0 1 1 72 0" stroke-width="7" stroke-dasharray="2 7"/><path d="M62 92l24-32" stroke-width="4"/><circle cx="62" cy="92" r="6" fill="currentColor"/>',
+  heat:     '<path d="M26 108c-12-16 12-28 0-44s12-28 0-44M60 108c-12-16 12-28 0-44s12-28 0-44M94 108c-12-16 12-28 0-44s12-28 0-44" stroke-width="3"/>',
+  design2:  '<path d="M60 14l38 22v44L60 102 22 80V36z"/><path d="M22 36l38 22 38-22M60 58v44"/><circle cx="60" cy="58" r="12"/><path d="M60 102v14M30 114h60"/>'
 };
+
 const svg = (paths) =>
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+
 const EXTERNAL = svg('<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>');
 
-/* ====== Rendering ====== */
+/* ====== Render Drive feature card ====== */
 const linkAttrs = 'target="_blank" rel="noopener noreferrer"';
 
 document.getElementById('drive-slot').innerHTML =
@@ -298,35 +384,86 @@ document.getElementById('drive-slot').innerHTML =
     '<div class="ico">' + svg(ICONS.drive) + '</div>' +
     '<div><h2>' + DRIVE.title + '</h2><p>' + DRIVE.description + '</p></div>' +
     '<a class="btn" href="' + DRIVE.url + '" ' + linkAttrs + ' aria-label="' + DRIVE.cta + ' (opens in a new tab)">' +
-      DRIVE.cta + EXTERNAL + '</a>' +
+      DRIVE.cta + EXTERNAL +
+    '</a>' +
   '</article>';
 
-document.getElementById('course-grid').innerHTML = COURSES.map(function (c) {
-  return '<li><article class="card" data-t="' + c.icon + '">' +
-    '<svg class="art" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' + ART[c.icon] + '</svg>' +
-    '<div class="card-top"><div class="ico">' + svg(ICONS[c.icon]) + '</div></div>' +
-    '<div class="card-head"><h3>' + c.title + '</h3>' +
-      (c.code ? '<span class="code">' + c.code + '</span>' : '') + '</div>' +
-    '<p>' + c.description + '</p>' +
-    '<a class="btn" href="' + c.url + '" ' + linkAttrs + ' aria-label="Open Course: ' + c.title + ' (opens in a new tab)">Open Course' + EXTERNAL + '</a>' +
-  '</article></li>';
-}).join('');
+/* ====== Render course cards ====== */
+function renderCard(c) {
+  return '<li data-category="' + c.category + '" data-title="' + c.title.toLowerCase() + '" data-desc="' + c.description.toLowerCase() + '">' +
+    '<article class="card" data-t="' + c.icon + '">' +
+      '<svg class="art" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' + ART[c.icon] + '</svg>' +
+      '<div class="card-top"><div class="ico">' + svg(ICONS[c.icon]) + '</div></div>' +
+      '<div class="card-head"><h3>' + c.title + '</h3>' +
+        (c.code ? '<span class="code">' + c.code + '</span>' : '') + '</div>' +
+      '<p>' + c.description + '</p>' +
+      '<a class="btn" href="' + c.url + '" ' + linkAttrs + ' aria-label="Open Course: ' + c.title + ' (opens in a new tab)">Open Course' + EXTERNAL + '</a>' +
+    '</article>' +
+  '</li>';
+}
 
+const grid = document.getElementById('course-grid');
+grid.innerHTML = COURSES.map(renderCard).join('');
+document.getElementById('stat-courses').textContent = COURSES.length;
 document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ====== Search & filter ====== */
+(function () {
+  var searchInput  = document.getElementById('search');
+  var chips        = Array.from(document.querySelectorAll('.chip'));
+  var noResults    = document.getElementById('no-results');
+  var items        = Array.from(grid.querySelectorAll('li'));
+  var activeFilter = 'all';
+
+  function applyFilter() {
+    var q = searchInput.value.trim().toLowerCase();
+    var visible = 0;
+    items.forEach(function (li) {
+      var matchCat   = activeFilter === 'all' || li.dataset.category === activeFilter;
+      var matchQuery = !q || li.dataset.title.includes(q) || li.dataset.desc.includes(q);
+      var show = matchCat && matchQuery;
+      li.hidden = !show;
+      if (show) visible++;
+    });
+    noResults.classList.toggle('visible', visible === 0);
+  }
+
+  searchInput.addEventListener('input', applyFilter);
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      activeFilter = chip.dataset.filter;
+      chips.forEach(function (c) { c.setAttribute('aria-pressed', c === chip ? 'true' : 'false'); });
+      applyFilter();
+    });
+  });
+})();
+
+/* ====== Offline detection ====== */
+(function () {
+  function update() {
+    document.body.classList.toggle('offline', !navigator.onLine);
+  }
+  window.addEventListener('online',  update);
+  window.addEventListener('offline', update);
+  update();
+})();
 
 /* ====== PWA: install button + service worker ====== */
 (function () {
-  var btn = document.getElementById('install-btn');
-  var tip = document.getElementById('ios-tip');
+  var btn      = document.getElementById('install-btn');
+  var tip      = document.getElementById('ios-tip');
   var deferred = null;
   var standalone = function () {
-    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
   };
-  var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   if (!standalone()) {
     if (isIOS) {
-      /* iOS has no install prompt API: show the button and explain Share > Add to Home Screen */
+      /* iOS has no install-prompt API; show the button and explain Share → Add to Home Screen */
       btn.hidden = false;
       btn.addEventListener('click', function () { tip.hidden = !tip.hidden; });
     } else {
@@ -339,16 +476,35 @@ document.getElementById('year').textContent = new Date().getFullYear();
         if (!deferred) return;
         var ev = deferred;
         deferred = null;
-        btn.hidden = true;               /* the prompt event can only be used once */
+        btn.hidden = true;    /* the prompt event can only be used once */
         ev.prompt();
       });
     }
   }
-  window.addEventListener('appinstalled', function () { deferred = null; btn.hidden = true; tip.hidden = true; });
+  window.addEventListener('appinstalled', function () {
+    deferred = null;
+    btn.hidden = true;
+    tip.hidden = true;
+  });
 
+  /* Service worker registration */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () {});
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .then(function (reg) {
+          /* Detect when a new service worker has taken over and prompt a reload */
+          reg.addEventListener('updatefound', function () {
+            var newWorker = reg.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', function () {
+              if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                /* A new version is active — reload silently so users always get fresh content */
+                window.location.reload();
+              }
+            });
+          });
+        })
+        .catch(function () { /* SW registration failed silently */ });
     });
   }
 })();
