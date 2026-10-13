@@ -6,6 +6,12 @@
 <title>MechHub | Mechanical Engineering Study Hub</title>
 <meta name="description" content="Everything You Need to Study Engineering. A central hub for mechanical engineering courses, lecture notes, and class resources.">
 <meta name="theme-color" content="#0B1F3A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MechHub">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230B1F3A'/%3E%3Cpath d='M12 4l7 4v8l-7 4-7-4V8z' fill='none' stroke='%23F5A623' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='12' r='2.4' fill='%23F5A623'/%3E%3C/svg%3E">
 <style>
 :root{--navy:#0B1F3A;--blue:#1D5FD1;--blue-d:#174AA3;--paper:#F5F7FA;--steel:#4F5F73;--line:#CBD3DE;--amber:#F5A623;--amber-l:#FFF4DB}
@@ -83,6 +89,13 @@ a{color:inherit}
 .hero p{max-width:52ch;margin:18px 0 30px;color:#C9D6EA;font-size:clamp(1rem,2.4vw,1.2rem)}
 .deco{position:absolute;right:max(-60px,calc(50% - 640px));top:50%;width:min(480px,60vw);transform:translateY(-50%);color:#7FA8F0;opacity:.45;pointer-events:none}
 .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:repeating-linear-gradient(90deg,var(--amber) 0 48px,transparent 48px 64px)}
+
+/* Install button (PWA) */
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px}
+.btn[hidden],.install-tip[hidden]{display:none}
+.btn-ghost{background:transparent;color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.btn-ghost:hover{background:rgba(255,255,255,.12)}
+.install-tip{margin-top:16px;max-width:52ch;padding:12px 16px;border:1px solid rgba(255,255,255,.28);border-radius:8px;background:rgba(255,255,255,.08);color:#C9D6EA;font-size:.95rem}
 
 /* Resources */
 #resources{padding:56px 0 72px}
@@ -172,7 +185,14 @@ a{color:inherit}
     <div class="wrap">
       <h1 id="hero-title">Mechanical Engineering Study Hub</h1>
       <p>Your central destination for mechanical engineering courses, lecture notes, and class resources.</p>
-      <a class="btn" href="#resources">Explore Study Resources</a>
+      <div class="hero-actions">
+        <a class="btn" href="#resources">Explore Study Resources</a>
+        <button type="button" class="btn btn-ghost" id="install-btn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>
+          Install MechHub
+        </button>
+      </div>
+      <div class="install-tip" id="ios-tip" role="note" hidden>To install MechHub on iPhone or iPad, open this page in Safari, tap the <strong>Share</strong> button, then choose <strong>Add to Home Screen</strong>.</div>
     </div>
   </section>
 
@@ -202,7 +222,23 @@ const DRIVE = {
   url: 'https://drive.google.com/drive/folders/1LVn5McTEaALZz_izfzxELduDn-HFU_hd'
 };
 
+/* Display order: Heat Transfer, Fluid Mechanics, Measurements, BME (Electrical Machines), Design 2, Economy; remaining courses keep their original order. */
 const COURSES = [
+  { title: 'Heat Transfer', code: '', icon: 'heat',
+    description: 'Conduction, convection, and radiation in engineering systems.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/Heat-Transfer/' },
+  { title: 'Fluid Mechanics II', code: '', icon: 'fluid',
+    description: 'Advanced fluid behavior, flow analysis, and engineering applications.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/Fluid2/' },
+  { title: 'Mechanical Measurements', code: '', icon: 'measure',
+    description: 'Measurement principles, instruments, and experimental methods.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/measurement/' },
+  { title: 'Basics of Electrical Machines', code: 'PME 302', icon: 'electrical',
+    description: 'Introductory concepts of electrical machines and their applications.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/PME302/' },
+  { title: 'Mechanical Design II', code: '', icon: 'design2',
+    description: 'Further topics in mechanical design and machine component analysis.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/design2/' },
   { title: 'Engineering Economy', code: '', icon: 'economy',
     description: 'Cost analysis and economic decision-making for engineering projects.',
     url: 'https://ahmedramadantajeldin-rgb.github.io/economy/' },
@@ -214,22 +250,7 @@ const COURSES = [
     url: 'https://ahmedramadantajeldin-rgb.github.io/my-website/' },
   { title: 'Numerical Methods', code: 'MATH 302', icon: 'numerical',
     description: 'Computational techniques for solving engineering mathematics problems.',
-    url: 'https://ahmedramadantajeldin-rgb.github.io/math302/' },
-  { title: 'Basics of Electrical Machines', code: 'PME 302', icon: 'electrical',
-    description: 'Introductory concepts of electrical machines and their applications.',
-    url: 'https://ahmedramadantajeldin-rgb.github.io/PME302/' },
-  { title: 'Fluid Mechanics II', code: '', icon: 'fluid',
-    description: 'Advanced fluid behavior, flow analysis, and engineering applications.',
-    url: 'https://ahmedramadantajeldin-rgb.github.io/Fluid2/' },
-  { title: 'Mechanical Measurements', code: '', icon: 'measure',
-    description: 'Measurement principles, instruments, and experimental methods.',
-    url: 'https://ahmedramadantajeldin-rgb.github.io/measurement/' },
-  { title: 'Heat Transfer', code: '', icon: 'heat',
-    description: 'Conduction, convection, and radiation in engineering systems.',
-    url: 'https://ahmedramadantajeldin-rgb.github.io/Heat-Transfer/' },
-  { title: 'Mechanical Design II', code: '', icon: 'design2',
-    description: 'Further topics in mechanical design and machine component analysis.',
-    url: 'https://ahmedramadantajeldin-rgb.github.io/design2/' }
+    url: 'https://ahmedramadantajeldin-rgb.github.io/math302/' }
 ];
 
 /* ====== Icons (inline SVG paths, 24x24 grid) ====== */
@@ -283,6 +304,45 @@ document.getElementById('course-grid').innerHTML = COURSES.map(function (c) {
 }).join('');
 
 document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ====== PWA: install button + service worker ====== */
+(function () {
+  var btn = document.getElementById('install-btn');
+  var tip = document.getElementById('ios-tip');
+  var deferred = null;
+  var standalone = function () {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  };
+  var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (!standalone()) {
+    if (isIOS) {
+      /* iOS has no install prompt API: show the button and explain Share > Add to Home Screen */
+      btn.hidden = false;
+      btn.addEventListener('click', function () { tip.hidden = !tip.hidden; });
+    } else {
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferred = e;
+        btn.hidden = false;
+      });
+      btn.addEventListener('click', function () {
+        if (!deferred) return;
+        var ev = deferred;
+        deferred = null;
+        btn.hidden = true;               /* the prompt event can only be used once */
+        ev.prompt();
+      });
+    }
+  }
+  window.addEventListener('appinstalled', function () { deferred = null; btn.hidden = true; tip.hidden = true; });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () {});
+    });
+  }
+})();
 </script>
 </body>
 </html>
