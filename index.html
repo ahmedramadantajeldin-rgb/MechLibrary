@@ -5,16 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MechHub | Mechanical Engineering Study Hub</title>
 <meta name="description" content="Everything You Need to Study Engineering. A central hub for mechanical engineering courses, lecture notes, and class resources.">
-<meta name="theme-color" content="#0B1F3A">
+<meta name="theme-color" content="#151515">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="MechHub">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230B1F3A'/%3E%3Cpath d='M12 4l7 4v8l-7 4-7-4V8z' fill='none' stroke='%23F5A623' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='12' r='2.4' fill='%23F5A623'/%3E%3C/svg%3E">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
 <style>
-:root{--navy:#0B1F3A;--blue:#1D5FD1;--blue-d:#174AA3;--paper:#F5F7FA;--steel:#4F5F73;--line:#CBD3DE;--amber:#F5A623;--amber-l:#FFF4DB}
+/* Token names kept from the previous design; values now follow the MechHub identity:
+   --navy = brand black #151515, --blue = brand green #168447 (light surfaces), --amber = brand green #22A45D (dark surfaces) */
+:root{--navy:#151515;--blue:#168447;--blue-d:#126B3A;--paper:#F5F6F5;--steel:#4F5651;--line:#D2D6D3;--amber:#22A45D;--amber-l:#E9F5EE}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:76px}
 body{margin:0;background:var(--paper);color:var(--navy);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
@@ -29,7 +33,7 @@ a{color:inherit}
 .btn:hover{background:var(--blue-d)}
 .btn svg{width:18px;height:18px;flex:none}
 .btn-amber{background:var(--amber);color:var(--navy)}
-.btn-amber:hover{background:#FFB840}
+.btn-amber:hover{background:#2DBA6E}
 .hero .btn{border-color:rgba(255,255,255,.35)}
 .card .btn:focus-visible,.feature .btn:focus-visible{outline:none}
 .card .btn::after,.feature .btn::after{content:"";position:absolute;inset:0;border-radius:inherit}
@@ -41,13 +45,13 @@ a{color:inherit}
 .brand svg{width:30px;height:30px;color:var(--amber)}
 .flag,.brand .flag{display:block;flex:none;width:36px;height:18px;color:inherit}
 .foot-brand{display:inline-flex;align-items:center;gap:12px}
-.brand .logo{width:36px;height:36px}
-.foot-brand .logo{flex:none;width:36px;height:36px;color:#9FB3CC;--m:#C9D6EA}
+.brand .logo{width:140px;height:36px;flex:none}
+.foot-brand .logo{flex:none;width:36px;height:36px}
 .fb-text{display:flex;flex-direction:column;line-height:1.25}
-.fb-text small{font-size:.8rem;color:#9FB3CC}
+.fb-text small{font-size:.8rem;color:#A9B0AB}
 
 /* Per-course identities */
-.card{isolation:isolate;color:#fff;border:1px solid rgba(255,255,255,.14);background:linear-gradient(145deg,var(--b1),var(--b2));box-shadow:0 6px 18px rgba(11,31,58,.18)}
+.card{isolation:isolate;color:#fff;border:1px solid rgba(255,255,255,.14);background:linear-gradient(145deg,var(--b1),var(--b2));box-shadow:0 6px 18px rgba(21,21,21,.18)}
 .card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--a),transparent)}
 .card:hover{border-color:var(--a);box-shadow:0 14px 30px -8px var(--a)}
 .card:focus-within{outline-color:var(--a)}
@@ -86,8 +90,8 @@ a{color:inherit}
 .hero{position:relative;overflow:hidden;color:#fff;padding:72px 0 84px;background:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/32px 32px,var(--navy)}
 .hero .wrap{position:relative}
 .hero h1{font-size:clamp(2.2rem,6.5vw,3.9rem);max-width:12ch}
-.hero p{max-width:52ch;margin:18px 0 30px;color:#C9D6EA;font-size:clamp(1rem,2.4vw,1.2rem)}
-.deco{position:absolute;right:max(-60px,calc(50% - 640px));top:50%;width:min(480px,60vw);transform:translateY(-50%);color:#7FA8F0;opacity:.45;pointer-events:none}
+.hero p{max-width:52ch;margin:18px 0 30px;color:#D5D9D6;font-size:clamp(1rem,2.4vw,1.2rem)}
+.deco{position:absolute;right:max(-60px,calc(50% - 640px));top:50%;width:min(480px,60vw);transform:translateY(-50%);color:#22A45D;opacity:.45;pointer-events:none}
 .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:repeating-linear-gradient(90deg,var(--amber) 0 48px,transparent 48px 64px)}
 
 /* Install button (PWA) */
@@ -95,23 +99,23 @@ a{color:inherit}
 .btn[hidden],.install-tip[hidden]{display:none}
 .btn-ghost{background:transparent;color:#fff;font:inherit;font-weight:600;cursor:pointer}
 .btn-ghost:hover{background:rgba(255,255,255,.12)}
-.install-tip{margin-top:16px;max-width:52ch;padding:12px 16px;border:1px solid rgba(255,255,255,.28);border-radius:8px;background:rgba(255,255,255,.08);color:#C9D6EA;font-size:.95rem}
+.install-tip{margin-top:16px;max-width:52ch;padding:12px 16px;border:1px solid rgba(255,255,255,.28);border-radius:8px;background:rgba(255,255,255,.08);color:#D5D9D6;font-size:.95rem}
 
 /* Resources */
 #resources{padding:56px 0 72px}
-.feature{position:relative;display:flex;align-items:center;gap:24px;padding:28px;background:var(--amber-l);border:1px solid var(--amber);border-left:8px solid var(--amber);border-radius:14px;box-shadow:0 8px 24px rgba(11,31,58,.09)}
+.feature{position:relative;display:flex;align-items:center;gap:24px;padding:28px;background:var(--amber-l);border:1px solid var(--amber);border-left:8px solid var(--amber);border-radius:14px;box-shadow:0 8px 24px rgba(21,21,21,.09)}
 .feature:focus-within,.card:focus-within{outline:3px solid var(--blue);outline-offset:3px}
 .feature .ico{flex:none;width:68px;height:68px;border-radius:14px;background:var(--navy);color:var(--amber);display:grid;place-items:center}
 .feature .ico svg{width:36px;height:36px}
 .feature h2{font-size:clamp(1.35rem,3.5vw,1.8rem)}
-.feature p{margin:6px 0 0;color:#4A4231;max-width:56ch}
+.feature p{margin:6px 0 0;color:#3A413D;max-width:56ch}
 .feature .btn{margin-left:auto;flex:none}
 .section-title{font-size:clamp(1.6rem,4vw,2.2rem);margin:56px 0 24px;padding-bottom:12px;border-bottom:2px solid var(--navy)}
 .grid{list-style:none;margin:0;padding:0;display:grid;gap:20px;grid-template-columns:1fr}
-.card{position:relative;height:100%;display:flex;flex-direction:column;gap:12px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 8px rgba(11,31,58,.05);transition:transform .2s,border-color .2s,box-shadow .2s}
-.card:hover{transform:translateY(-3px);border-color:var(--blue);box-shadow:0 12px 26px rgba(11,31,58,.12)}
+.card{position:relative;height:100%;display:flex;flex-direction:column;gap:12px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 8px rgba(21,21,21,.05);transition:transform .2s,border-color .2s,box-shadow .2s}
+.card:hover{transform:translateY(-3px);border-color:var(--blue);box-shadow:0 12px 26px rgba(21,21,21,.12)}
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.ico{width:50px;height:50px;border-radius:10px;background:#E8EFFC;color:var(--blue);display:grid;place-items:center}
+.ico{width:50px;height:50px;border-radius:10px;background:#E6F2EB;color:var(--blue);display:grid;place-items:center}
 .ico svg{width:27px;height:27px}
 .code{padding:6px 10px;border:1.5px solid var(--navy);border-radius:4px;font:700 .85rem/1 Bahnschrift,"DIN Alternate","Roboto Condensed",system-ui,sans-serif;letter-spacing:.06em;white-space:nowrap}
 .card h3{font-size:1.3rem}
@@ -119,12 +123,16 @@ a{color:inherit}
 .card .btn{align-self:flex-start;margin-top:4px}
 
 /* Footer */
-.site-footer{background:var(--navy);color:#C9D6EA;padding:26px 0;font-size:.92rem}
+.site-footer{background:var(--navy);color:#D5D9D6;padding:26px 0;font-size:.92rem}
 .site-footer .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 24px}
 .site-footer strong{color:#fff;font-family:Bahnschrift,"DIN Alternate","Roboto Condensed",system-ui,sans-serif;font-size:1.1rem;letter-spacing:.02em}
 
 @media (min-width:600px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media (min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:360px){
+  .site-header .wrap{gap:12px}
+  .nav-link{padding:0 10px;font-size:.88rem}
+}
 @media (max-width:720px){
   .hero{padding:52px 0 60px}
   .deco{opacity:.2;right:-120px;width:340px}
@@ -152,19 +160,16 @@ a{color:inherit}
     </g>
     <rect x=".5" y=".5" width="39" height="19" rx="2.5" fill="none" stroke="rgba(255,255,255,.5)"/>
   </symbol>
-  <symbol id="logo-mh" viewBox="0 0 32 32">
-    <circle cx="16" cy="16" r="13.5" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3.1 2.1"/>
-    <circle cx="16" cy="16" r="10.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
-    <path d="M9.5 21.5v-10l6.5 6.5 6.5-6.5v10" fill="none" stroke="var(--m,#fff)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-    <g fill="currentColor"><circle cx="9.5" cy="11.5" r="1.9"/><circle cx="22.5" cy="11.5" r="1.9"/><circle cx="16" cy="18" r="1.9"/></g>
-  </symbol>
+  <symbol id="logo-horizontal" viewBox="-118 -118 918 236"><defs><clipPath id="hdarkt"><rect x="-130" y="-130" width="260" height="138.70"/></clipPath></defs><path d="M20.35 -91.77L31.81 -107.39L53.44 -98.43L50.51 -79.28A94 94 0 0 1 79.28 -50.51L98.43 -53.44L107.39 -31.81L91.77 -20.35A94 94 0 0 1 91.77 20.35L107.39 31.81L98.43 53.44L79.28 50.51A94 94 0 0 1 50.51 79.28L53.44 98.43L31.81 107.39L20.35 91.77A94 94 0 0 1 -20.35 91.77L-31.81 107.39L-53.44 98.43L-50.51 79.28A94 94 0 0 1 -79.28 50.51L-98.43 53.44L-107.39 31.81L-91.77 20.35A94 94 0 0 1 -91.77 -20.35L-107.39 -31.81L-98.43 -53.44L-79.28 -50.51A94 94 0 0 1 -50.51 -79.28L-53.44 -98.43L-31.81 -107.39L-20.35 -91.77A94 94 0 0 1 20.35 -91.77ZM-54.00 -54.00L-33.00 -54.00L-33.00 54.00L-54.00 54.00ZM33.00 -54.00L54.00 -54.00L54.00 54.00L33.00 54.00Z" fill="#22A45D" fill-rule="evenodd"/><path d="M20.35 -91.77L31.81 -107.39L53.44 -98.43L50.51 -79.28A94 94 0 0 1 79.28 -50.51L98.43 -53.44L107.39 -31.81L91.77 -20.35A94 94 0 0 1 91.77 20.35L107.39 31.81L98.43 53.44L79.28 50.51A94 94 0 0 1 50.51 79.28L53.44 98.43L31.81 107.39L20.35 91.77A94 94 0 0 1 -20.35 91.77L-31.81 107.39L-53.44 98.43L-50.51 79.28A94 94 0 0 1 -79.28 50.51L-98.43 53.44L-107.39 31.81L-91.77 20.35A94 94 0 0 1 -91.77 -20.35L-107.39 -31.81L-98.43 -53.44L-79.28 -50.51A94 94 0 0 1 -50.51 -79.28L-53.44 -98.43L-31.81 -107.39L-20.35 -91.77A94 94 0 0 1 20.35 -91.77ZM-54.00 -54.00L-33.00 -54.00L-33.00 54.00L-54.00 54.00ZM33.00 -54.00L54.00 -54.00L54.00 54.00L33.00 54.00Z" fill="#FFFFFF" fill-rule="evenodd" clip-path="url(#hdarkt)"/><path d="M-33.00 -54.00L0.00 -21.00L33.00 -54.00L33.00 -24.30L0.00 8.70L-33.00 -24.30Z" fill="#E4312B"/><g transform="translate(156,53.17)"><path d="M9.45 0.00V-106.35H28.80L64.95 -51.60L101.10 -106.35H120.45V0.00H93.90V-54.45L73.65 -24.00H56.25L36.15 -54.45V0.00ZM173.10 1.65Q160.80 1.65 151.35 -3.22Q141.90 -8.10 136.50 -16.80Q131.10 -25.50 131.10 -36.75Q131.10 -47.85 136.35 -56.47Q141.60 -65.10 150.68 -70.12Q159.75 -75.15 171.15 -75.15Q182.25 -75.15 190.88 -70.42Q199.50 -65.70 204.38 -57.38Q209.25 -49.05 209.25 -38.40Q209.25 -36.15 209.03 -33.83Q208.80 -31.50 208.05 -28.50L156.60 -28.20Q157.05 -27.15 157.50 -26.10Q159.60 -21.60 163.50 -19.35Q167.40 -17.10 173.10 -17.10Q178.50 -17.10 182.62 -18.90Q186.75 -20.70 190.05 -24.45L203.70 -10.80Q198.30 -4.65 190.57 -1.50Q182.85 1.65 173.10 1.65ZM156.60 -45.15 185.10 -45.30Q184.80 -46.95 184.20 -48.30Q182.55 -52.20 179.40 -54.30Q176.25 -56.40 171.45 -56.40Q166.50 -56.40 162.90 -54.00Q159.30 -51.60 157.35 -47.25Q156.90 -46.20 156.60 -45.15ZM253.95 1.65Q242.25 1.65 232.88 -3.30Q223.50 -8.25 218.10 -16.95Q212.70 -25.65 212.70 -36.60Q212.70 -47.70 218.18 -56.40Q223.65 -65.10 233.03 -70.12Q242.40 -75.15 254.25 -75.15Q262.80 -75.15 269.85 -72.30Q276.90 -69.45 282.75 -63.75L266.25 -47.25Q264.00 -49.50 261.07 -50.62Q258.15 -51.75 254.25 -51.75Q250.05 -51.75 246.68 -49.88Q243.30 -48.00 241.28 -44.70Q239.25 -41.40 239.25 -36.75Q239.25 -32.25 241.28 -28.88Q243.30 -25.50 246.68 -23.55Q250.05 -21.60 254.25 -21.60Q258.45 -21.60 261.45 -22.95Q264.45 -24.30 266.70 -26.85L283.35 -10.35Q277.20 -4.35 270.07 -1.35Q262.95 1.65 253.95 1.65ZM338.85 0.00V-41.40Q338.85 -46.50 335.85 -49.42Q332.85 -52.35 328.20 -52.35Q325.05 -52.35 322.57 -51.00Q320.10 -49.65 318.75 -47.25Q317.40 -44.85 317.40 -41.40V0.00H291.30V-109.35H317.40V-69.00Q319.05 -70.20 321.00 -71.40Q327.45 -74.85 336.00 -74.85Q344.85 -74.85 351.38 -71.32Q357.90 -67.80 361.42 -61.65Q364.95 -55.50 364.95 -47.40V0.00Z" fill="#FFFFFF"/><path d="M11.40 0.00V-105.00H28.65V-62.25H78.15V-105.00H95.40V0.00H78.15V-46.50H28.65V0.00ZM144.00 1.50Q134.85 1.50 127.72 -2.55Q120.60 -6.60 116.62 -13.72Q112.65 -20.85 112.65 -30.15V-72.00H129.15V-30.90Q129.15 -25.65 130.88 -21.98Q132.60 -18.30 135.97 -16.35Q139.35 -14.40 144.00 -14.40Q151.20 -14.40 155.02 -18.67Q158.85 -22.95 158.85 -30.90V-72.00H175.35V-30.15Q175.35 -20.70 171.38 -13.57Q167.40 -6.45 160.35 -2.48Q153.30 1.50 144.00 1.50ZM229.05 1.50Q220.80 1.50 214.35 -2.10Q210.00 -4.35 207.00 -7.80V0.00H190.50V-108.00H207.00V-64.05Q210.15 -67.65 214.50 -70.05Q220.95 -73.50 229.05 -73.50Q238.80 -73.50 246.68 -68.47Q254.55 -63.45 259.12 -54.97Q263.70 -46.50 263.70 -35.85Q263.70 -25.35 259.12 -16.88Q254.55 -8.40 246.68 -3.45Q238.80 1.50 229.05 1.50ZM226.35 -14.10Q232.35 -14.10 236.93 -16.88Q241.50 -19.65 244.12 -24.60Q246.75 -29.55 246.75 -36.00Q246.75 -42.45 244.12 -47.40Q241.50 -52.35 236.93 -55.12Q232.35 -57.90 226.35 -57.90Q220.35 -57.90 215.70 -55.12Q211.05 -52.35 208.50 -47.40Q205.95 -42.45 205.95 -36.00Q205.95 -29.55 208.50 -24.60Q211.05 -19.65 215.70 -16.88Q220.35 -14.10 226.35 -14.10Z" transform="translate(369.60,0)" fill="#22A45D"/></g>
+</symbol>
+  <symbol id="logo-icon" viewBox="-120 -120 240 240"><defs><clipPath id="ict"><rect x="-130" y="-130" width="260" height="140.77"/></clipPath></defs><path d="M18.13 -93.25L28.99 -108.18L56.00 -96.99L53.12 -78.76A95 95 0 0 1 78.76 -53.12L96.99 -56.00L108.18 -28.99L93.25 -18.13A95 95 0 0 1 93.25 18.13L108.18 28.99L96.99 56.00L78.76 53.12A95 95 0 0 1 53.12 78.76L56.00 96.99L28.99 108.18L18.13 93.25A95 95 0 0 1 -18.13 93.25L-28.99 108.18L-56.00 96.99L-53.12 78.76A95 95 0 0 1 -78.76 53.12L-96.99 56.00L-108.18 28.99L-93.25 18.13A95 95 0 0 1 -93.25 -18.13L-108.18 -28.99L-96.99 -56.00L-78.76 -53.12A95 95 0 0 1 -53.12 -78.76L-56.00 -96.99L-28.99 -108.18L-18.13 -93.25A95 95 0 0 1 18.13 -93.25ZM-62.00 -62.00L-36.00 -62.00L-36.00 62.00L-62.00 62.00ZM36.00 -62.00L62.00 -62.00L62.00 62.00L36.00 62.00Z" fill="#22A45D" fill-rule="evenodd"/><path d="M18.13 -93.25L28.99 -108.18L56.00 -96.99L53.12 -78.76A95 95 0 0 1 78.76 -53.12L96.99 -56.00L108.18 -28.99L93.25 -18.13A95 95 0 0 1 93.25 18.13L108.18 28.99L96.99 56.00L78.76 53.12A95 95 0 0 1 53.12 78.76L56.00 96.99L28.99 108.18L18.13 93.25A95 95 0 0 1 -18.13 93.25L-28.99 108.18L-56.00 96.99L-53.12 78.76A95 95 0 0 1 -78.76 53.12L-96.99 56.00L-108.18 28.99L-93.25 18.13A95 95 0 0 1 -93.25 -18.13L-108.18 -28.99L-96.99 -56.00L-78.76 -53.12A95 95 0 0 1 -53.12 -78.76L-56.00 -96.99L-28.99 -108.18L-18.13 -93.25A95 95 0 0 1 18.13 -93.25ZM-62.00 -62.00L-36.00 -62.00L-36.00 62.00L-62.00 62.00ZM36.00 -62.00L62.00 -62.00L62.00 62.00L36.00 62.00Z" fill="#FFFFFF" fill-rule="evenodd" clip-path="url(#ict)"/><path d="M-36.00 -62.00L0.00 -26.00L36.00 -62.00L36.00 -25.23L0.00 10.77L-36.00 -25.23Z" fill="#E4312B"/>
+</symbol>
 </svg>
 
 <header class="site-header">
   <div class="wrap">
     <a class="brand" href="#top" aria-label="MechHub home">
-      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><use href="#logo-mh"/></svg>
-      MechHub
+      <svg class="logo" viewBox="0 0 918 236" aria-hidden="true"><use href="#logo-horizontal"/></svg>
       <svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg>
     </a>
     <a class="nav-link" href="#resources">Courses</a>
@@ -207,7 +212,7 @@ a{color:inherit}
 
 <footer class="site-footer">
   <div class="wrap">
-    <span class="foot-brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><use href="#logo-mh"/></svg><span class="fb-text"><strong>MechHub</strong><small>Engineered for Learning</small></span><svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg></span>
+    <span class="foot-brand"><svg class="logo" viewBox="0 0 240 240" aria-hidden="true"><use href="#logo-icon"/></svg><span class="fb-text"><strong>MechHub</strong><small>Engineered for Learning</small></span><svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg></span>
     <span>Built for Better Engineering Learning</span>
     <span>&copy; <span id="year">2026</span> MechHub</span>
   </div>

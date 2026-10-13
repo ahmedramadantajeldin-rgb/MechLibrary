@@ -7,7 +7,7 @@
  */
 'use strict';
 
-const VERSION = 'v1';
+const VERSION = 'v2';   // v2: MechHub visual-identity update (new icons); old 'mechhub-v1' cache is removed on activate
 const CACHE = 'mechhub-' + VERSION;
 const SCOPE = self.registration.scope;                 // e.g. https://user.github.io/repo/
 const abs = (p) => new URL(p, SCOPE).href;
@@ -15,11 +15,11 @@ const abs = (p) => new URL(p, SCOPE).href;
 const SHELL = [abs('./'), abs('index.html')];
 const ASSETS = [
   abs('manifest.webmanifest'),
-  abs('icons/icon-192.png'),
-  abs('icons/icon-512.png'),
-  abs('icons/icon-maskable-192.png'),
-  abs('icons/icon-maskable-512.png'),
-  abs('icons/apple-touch-icon.png')
+  abs('icons/android-chrome-192.png'),
+  abs('icons/android-chrome-512.png'),
+  abs('icons/android-chrome-maskable-192.png'),
+  abs('icons/android-chrome-maskable-512.png'),
+  abs('icons/apple-touch-icon-180.png')
 ];
 const NETWORK_TIMEOUT_MS = 4000;
 
