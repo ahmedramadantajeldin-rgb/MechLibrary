@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MechHub | Mechanical Engineering Study Hub</title>
+<meta name="description" content="Everything You Need to Study Engineering. A central hub for mechanical engineering courses, lecture notes, and class resources.">
+<meta name="theme-color" content="#0B1F3A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230B1F3A'/%3E%3Cpath d='M12 4l7 4v8l-7 4-7-4V8z' fill='none' stroke='%23F5A623' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='12' r='2.4' fill='%23F5A623'/%3E%3C/svg%3E">
+<style>
+:root{--navy:#0B1F3A;--blue:#1D5FD1;--blue-d:#174AA3;--paper:#F5F7FA;--steel:#4F5F73;--line:#CBD3DE;--amber:#F5A623;--amber-l:#FFF4DB}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--paper);color:var(--navy);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+h1,h2,h3{margin:0;line-height:1.15;overflow-wrap:anywhere;font-family:Bahnschrift,"DIN Alternate","Roboto Condensed","Arial Narrow",system-ui,sans-serif;font-weight:700;letter-spacing:.01em}
+a{color:inherit}
+.wrap{width:min(1120px,100% - 40px);margin-inline:auto}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.site-header :focus-visible,.hero :focus-visible,.site-footer :focus-visible{outline-color:var(--amber)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:0 20px;border-radius:8px;background:var(--blue);color:#fff;font-weight:600;text-decoration:none;border:1px solid transparent;transition:background .2s,transform .2s}
+.btn:hover{background:var(--blue-d)}
+.btn svg{width:18px;height:18px;flex:none}
+.btn-amber{background:var(--amber);color:var(--navy)}
+.btn-amber:hover{background:#FFB840}
+.hero .btn{border-color:rgba(255,255,255,.35)}
+.card .btn:focus-visible,.feature .btn:focus-visible{outline:none}
+.card .btn::after,.feature .btn::after{content:"";position:absolute;inset:0;border-radius:inherit}
+
+/* Header */
+.site-header{position:sticky;top:0;z-index:10;background:var(--navy);color:#fff;border-bottom:1px solid rgba(255,255,255,.12)}
+.site-header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:60px}
+.brand{display:flex;align-items:center;gap:10px;font:700 1.3rem/1 Bahnschrift,"DIN Alternate","Roboto Condensed",system-ui,sans-serif;text-decoration:none;letter-spacing:.02em}
+.brand svg{width:30px;height:30px;color:var(--amber)}
+.flag,.brand .flag{display:block;flex:none;width:36px;height:18px;color:inherit}
+.foot-brand{display:inline-flex;align-items:center;gap:12px}
+.brand .logo{width:36px;height:36px}
+.foot-brand .logo{flex:none;width:36px;height:36px;color:#9FB3CC;--m:#C9D6EA}
+.fb-text{display:flex;flex-direction:column;line-height:1.25}
+.fb-text small{font-size:.8rem;color:#9FB3CC}
+
+/* Per-course identities */
+.card{isolation:isolate;color:#fff;border:1px solid rgba(255,255,255,.14);background:linear-gradient(145deg,var(--b1),var(--b2));box-shadow:0 6px 18px rgba(11,31,58,.18)}
+.card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--a),transparent)}
+.card:hover{border-color:var(--a);box-shadow:0 14px 30px -8px var(--a)}
+.card:focus-within{outline-color:var(--a)}
+.card .art{position:absolute;right:-14px;bottom:-14px;width:150px;height:150px;color:var(--a);opacity:.28;z-index:-1;pointer-events:none;transition:transform .5s ease,opacity .3s}
+.card .ico{background:rgba(255,255,255,.1);border:1px solid var(--a);color:var(--a)}
+.card .code{border-color:var(--a);color:var(--a)}
+.card h3{color:#fff}
+.card p{color:#D3DCE8}
+.card .btn{background:var(--a);color:#101820}
+.card .btn:hover{background:var(--a);filter:brightness(1.12)}
+[data-t=economy]{--b1:#12503B;--b2:#0A2A20;--a:#E8BC4F}
+[data-t=thermo]{--b1:#6B1A12;--b2:#2A0B0B;--a:#FF8C42}
+[data-t=design1]{--b1:#27517F;--b2:#122338;--a:#B4CCE8}
+[data-t=numerical]{--b1:#3A2D80;--b2:#1A1540;--a:#BBAEFF}
+[data-t=electrical]{--b1:#0E3566;--b2:#071428;--a:#4CC9FF}
+[data-t=fluid]{--b1:#0A5C75;--b2:#052A38;--a:#3FE0D0}
+[data-t=measure]{--b1:#454C54;--b2:#22262B;--a:#FFB224}
+[data-t=heat]{--b1:#8A3510;--b2:#0F2F5A;--a:#FFA45E;background:linear-gradient(145deg,#8A3510,#4A2040 52%,#0F2F5A)}
+[data-t=design2]{--b1:#2A2E33;--b2:#0A0B0D;--a:#E0956A}
+.card:is(:hover,:focus-within,:active) .art{opacity:.55}
+[data-t=economy]:is(:hover,:focus-within,:active) .art{transform:translateY(-8px)}
+[data-t=thermo]:is(:hover,:focus-within,:active) .art{transform:scale(1.12)}
+[data-t=design1]:is(:hover,:focus-within,:active) .art{transform:rotate(25deg)}
+[data-t=numerical]:is(:hover,:focus-within,:active) .art{transform:translateX(-8px) scale(1.05)}
+[data-t=electrical]:is(:hover,:focus-within,:active) .art{transform:scale(1.08);filter:drop-shadow(0 0 8px var(--a))}
+[data-t=fluid]:is(:hover,:focus-within,:active) .art{transform:translateX(-12px)}
+[data-t=measure]:is(:hover,:focus-within,:active) .art{transform:rotate(-10deg)}
+[data-t=heat]:is(:hover,:focus-within,:active) .art{transform:translateY(-10px) scale(1.06)}
+[data-t=design2]:is(:hover,:focus-within,:active) .art{transform:rotate(-15deg) scale(1.05)}
+@media (hover:none){.card .art{opacity:.4}}
+@media (prefers-reduced-motion:reduce){.card .art{transform:none!important}}
+.nav-link{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid rgba(255,255,255,.35);border-radius:8px;color:#fff;font-weight:600;font-size:.95rem;text-decoration:none;transition:background .2s}
+.nav-link:hover{background:rgba(255,255,255,.12)}
+
+/* Hero */
+.hero{position:relative;overflow:hidden;color:#fff;padding:72px 0 84px;background:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/32px 32px,var(--navy)}
+.hero .wrap{position:relative}
+.hero h1{font-size:clamp(2.2rem,6.5vw,3.9rem);max-width:12ch}
+.hero p{max-width:52ch;margin:18px 0 30px;color:#C9D6EA;font-size:clamp(1rem,2.4vw,1.2rem)}
+.deco{position:absolute;right:max(-60px,calc(50% - 640px));top:50%;width:min(480px,60vw);transform:translateY(-50%);color:#7FA8F0;opacity:.45;pointer-events:none}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:repeating-linear-gradient(90deg,var(--amber) 0 48px,transparent 48px 64px)}
+
+/* Resources */
+#resources{padding:56px 0 72px}
+.feature{position:relative;display:flex;align-items:center;gap:24px;padding:28px;background:var(--amber-l);border:1px solid var(--amber);border-left:8px solid var(--amber);border-radius:14px;box-shadow:0 8px 24px rgba(11,31,58,.09)}
+.feature:focus-within,.card:focus-within{outline:3px solid var(--blue);outline-offset:3px}
+.feature .ico{flex:none;width:68px;height:68px;border-radius:14px;background:var(--navy);color:var(--amber);display:grid;place-items:center}
+.feature .ico svg{width:36px;height:36px}
+.feature h2{font-size:clamp(1.35rem,3.5vw,1.8rem)}
+.feature p{margin:6px 0 0;color:#4A4231;max-width:56ch}
+.feature .btn{margin-left:auto;flex:none}
+.section-title{font-size:clamp(1.6rem,4vw,2.2rem);margin:56px 0 24px;padding-bottom:12px;border-bottom:2px solid var(--navy)}
+.grid{list-style:none;margin:0;padding:0;display:grid;gap:20px;grid-template-columns:1fr}
+.card{position:relative;height:100%;display:flex;flex-direction:column;gap:12px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 8px rgba(11,31,58,.05);transition:transform .2s,border-color .2s,box-shadow .2s}
+.card:hover{transform:translateY(-3px);border-color:var(--blue);box-shadow:0 12px 26px rgba(11,31,58,.12)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ico{width:50px;height:50px;border-radius:10px;background:#E8EFFC;color:var(--blue);display:grid;place-items:center}
+.ico svg{width:27px;height:27px}
+.code{padding:6px 10px;border:1.5px solid var(--navy);border-radius:4px;font:700 .85rem/1 Bahnschrift,"DIN Alternate","Roboto Condensed",system-ui,sans-serif;letter-spacing:.06em;white-space:nowrap}
+.card h3{font-size:1.3rem}
+.card p{flex:1;margin:0;color:var(--steel);font-size:.95rem}
+.card .btn{align-self:flex-start;margin-top:4px}
+
+/* Footer */
+.site-footer{background:var(--navy);color:#C9D6EA;padding:26px 0;font-size:.92rem}
+.site-footer .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 24px}
+.site-footer strong{color:#fff;font-family:Bahnschrift,"DIN Alternate","Roboto Condensed",system-ui,sans-serif;font-size:1.1rem;letter-spacing:.02em}
+
+@media (min-width:600px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:720px){
+  .hero{padding:52px 0 60px}
+  .deco{opacity:.2;right:-120px;width:340px}
+  .feature{flex-direction:column;align-items:flex-start;padding:22px}
+  .feature .btn{margin-left:0;width:100%}
+  .hero .btn{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important;animation:none!important}
+  .card:hover{transform:none}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="flag-ps" viewBox="0 0 40 20">
+    <clipPath id="flag-clip"><rect width="40" height="20" rx="3"/></clipPath>
+    <g clip-path="url(#flag-clip)">
+      <rect width="40" height="6.67" fill="#000000"/>
+      <rect y="6.67" width="40" height="6.66" fill="#FFFFFF"/>
+      <rect y="13.33" width="40" height="6.67" fill="#007A3D"/>
+      <path d="M0 0l10 10L0 20z" fill="#CE1126"/>
+    </g>
+    <rect x=".5" y=".5" width="39" height="19" rx="2.5" fill="none" stroke="rgba(255,255,255,.5)"/>
+  </symbol>
+  <symbol id="logo-mh" viewBox="0 0 32 32">
+    <circle cx="16" cy="16" r="13.5" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3.1 2.1"/>
+    <circle cx="16" cy="16" r="10.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M9.5 21.5v-10l6.5 6.5 6.5-6.5v10" fill="none" stroke="var(--m,#fff)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="currentColor"><circle cx="9.5" cy="11.5" r="1.9"/><circle cx="22.5" cy="11.5" r="1.9"/><circle cx="16" cy="18" r="1.9"/></g>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="MechHub home">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><use href="#logo-mh"/></svg>
+      MechHub
+      <svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg>
+    </a>
+    <a class="nav-link" href="#resources">Courses</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-title">
+    <svg class="deco" viewBox="0 0 400 400" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+      <circle cx="200" cy="190" r="150"/>
+      <circle cx="200" cy="190" r="108" stroke-dasharray="6 5"/>
+      <circle cx="200" cy="190" r="42"/>
+      <circle cx="200" cy="190" r="10"/>
+      <path d="M30 190h340M200 20v340" stroke-dasharray="14 4 3 4"/>
+      <path d="M50 378h300M50 368v20M350 368v20"/>
+      <path d="M50 378l10-4v8zM350 378l-10-4v8z" fill="currentColor"/>
+    </svg>
+    <div class="wrap">
+      <h1 id="hero-title">Mechanical Engineering Study Hub</h1>
+      <p>Your central destination for mechanical engineering courses, lecture notes, and class resources.</p>
+      <a class="btn" href="#resources">Explore Study Resources</a>
+    </div>
+  </section>
+
+  <section id="resources" aria-label="Study resources">
+    <div class="wrap">
+      <div id="drive-slot"></div>
+      <h2 class="section-title">Explore Your Courses</h2>
+      <ul class="grid" id="course-grid"></ul>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span class="foot-brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><use href="#logo-mh"/></svg><span class="fb-text"><strong>MechHub</strong><small>Engineered for Learning</small></span><svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg></span>
+    <span>Built for Better Engineering Learning</span>
+    <span>&copy; <span id="year">2026</span> MechHub</span>
+  </div>
+</footer>
+
+<script>
+/* ====== Central configuration: edit titles, codes, descriptions or URLs here ====== */
+const DRIVE = {
+  title: 'Class Resources &amp; Google Drive',
+  description: 'Access shared class files, lecture materials, and batch resources.',
+  cta: 'Open Class Drive',
+  url: 'https://drive.google.com/drive/folders/1LVn5McTEaALZz_izfzxELduDn-HFU_hd'
+};
+
+const COURSES = [
+  { title: 'Engineering Economy', code: '', icon: 'economy',
+    description: 'Cost analysis and economic decision-making for engineering projects.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/economy/' },
+  { title: 'Thermodynamics III', code: 'THERMO 3', icon: 'thermo',
+    description: 'Advanced thermodynamic principles, cycles, and energy systems.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/tageldien/' },
+  { title: 'Mechanical Design I', code: 'ME 307', icon: 'design1',
+    description: 'Fundamentals of designing machine elements and mechanical components.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/my-website/' },
+  { title: 'Numerical Methods', code: 'MATH 302', icon: 'numerical',
+    description: 'Computational techniques for solving engineering mathematics problems.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/math302/' },
+  { title: 'Basics of Electrical Machines', code: 'PME 302', icon: 'electrical',
+    description: 'Introductory concepts of electrical machines and their applications.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/PME302/' },
+  { title: 'Fluid Mechanics II', code: '', icon: 'fluid',
+    description: 'Advanced fluid behavior, flow analysis, and engineering applications.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/Fluid2/' },
+  { title: 'Mechanical Measurements', code: '', icon: 'measure',
+    description: 'Measurement principles, instruments, and experimental methods.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/measurement/' },
+  { title: 'Heat Transfer', code: '', icon: 'heat',
+    description: 'Conduction, convection, and radiation in engineering systems.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/Heat-Transfer/' },
+  { title: 'Mechanical Design II', code: '', icon: 'design2',
+    description: 'Further topics in mechanical design and machine component analysis.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/design2/' }
+];
+
+/* ====== Icons (inline SVG paths, 24x24 grid) ====== */
+const ICONS = {
+  drive: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  economy: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+  thermo: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
+  design1: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  numerical: '<path d="M18 5H6l6 7-6 7h12"/>',
+  electrical: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  fluid: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 15a2.8 2.8 0 0 0 2.5 2"/>',
+  measure: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1"/>',
+  heat: '<path d="M8 3c0 3 3 3 3 6s-3 3-3 6M14 3c0 3 3 3 3 6s-3 3-3 6"/><path d="M5 20h14"/>',
+  design2: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>'
+};
+const ART = {
+  economy: '<rect x="12" y="72" width="16" height="42" fill="currentColor" stroke="none"/><rect x="38" y="54" width="16" height="60" fill="currentColor" stroke="none"/><rect x="64" y="62" width="16" height="52" fill="currentColor" stroke="none"/><rect x="90" y="30" width="16" height="84" fill="currentColor" stroke="none"/><path d="M8 58l32-24 26 10 48-34M100 10h14v14"/>',
+  thermo: '<path d="M22 92C28 46 62 22 102 32c-4 32-14 58-80 60z"/><path d="M96 24l8 8-10 4M10 40c14-8 14 8 28 0M10 52c14-8 14 8 28 0"/>',
+  design1: '<circle cx="62" cy="58" r="34" stroke-width="9" stroke-dasharray="7 6"/><circle cx="62" cy="58" r="26"/><circle cx="62" cy="58" r="9"/><path d="M8 112h108M8 106v12M116 106v12"/>',
+  numerical: '<path d="M0 30h120M0 60h120M0 90h120M30 0v120M60 0v120M90 0v120" stroke-width="1"/><path d="M6 100C32 14 62 124 114 22" stroke-width="3"/><circle cx="32" cy="46" r="4" fill="currentColor"/><circle cx="62" cy="70" r="4" fill="currentColor"/><circle cx="90" cy="46" r="4" fill="currentColor"/>',
+  electrical: '<path d="M4 74c0-22 20-22 20 0s20 22 20 0 20-22 20 0 20 22 20 0 20-22 20 0" stroke-width="3"/><path d="M24 50a38 38 0 0 1 72 0M12 38a52 52 0 0 1 96 0"/><path d="M62 86l-9 14h14l-9 14"/>',
+  fluid: '<path d="M0 34c20-14 40 14 60 0s40-14 60 0M0 62c20-14 40 14 60 0s40-14 60 0M0 90c20-14 40 14 60 0s40-14 60 0" stroke-width="3"/><circle cx="60" cy="62" r="13" fill="currentColor" stroke="none"/>',
+  measure: '<path d="M18 92a44 44 0 1 1 88 0" stroke-width="3"/><path d="M26 92a36 36 0 1 1 72 0" stroke-width="7" stroke-dasharray="2 7"/><path d="M62 92l24-32" stroke-width="4"/><circle cx="62" cy="92" r="6" fill="currentColor"/>',
+  heat: '<path d="M26 108c-12-16 12-28 0-44s12-28 0-44M60 108c-12-16 12-28 0-44s12-28 0-44M94 108c-12-16 12-28 0-44s12-28 0-44" stroke-width="3"/>',
+  design2: '<path d="M60 14l38 22v44L60 102 22 80V36z"/><path d="M22 36l38 22 38-22M60 58v44"/><circle cx="60" cy="58" r="12"/><path d="M60 102v14M30 114h60"/>'
+};
+const svg = (paths) =>
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+const EXTERNAL = svg('<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>');
+
+/* ====== Rendering ====== */
+const linkAttrs = 'target="_blank" rel="noopener noreferrer"';
+
+document.getElementById('drive-slot').innerHTML =
+  '<article class="feature">' +
+    '<div class="ico">' + svg(ICONS.drive) + '</div>' +
+    '<div><h2>' + DRIVE.title + '</h2><p>' + DRIVE.description + '</p></div>' +
+    '<a class="btn btn-amber" href="' + DRIVE.url + '" ' + linkAttrs + ' aria-label="' + DRIVE.cta + ' (opens in a new tab)">' +
+      DRIVE.cta + EXTERNAL + '</a>' +
+  '</article>';
+
+document.getElementById('course-grid').innerHTML = COURSES.map(function (c) {
+  return '<li><article class="card" data-t="' + c.icon + '">' +
+    '<svg class="art" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' + ART[c.icon] + '</svg>' +
+    '<div class="card-top"><div class="ico">' + svg(ICONS[c.icon]) + '</div>' +
+      (c.code ? '<span class="code">' + c.code + '</span>' : '') + '</div>' +
+    '<h3>' + c.title + '</h3>' +
+    '<p>' + c.description + '</p>' +
+    '<a class="btn" href="' + c.url + '" ' + linkAttrs + ' aria-label="Open Course: ' + c.title + ' (opens in a new tab)">Open Course' + EXTERNAL + '</a>' +
+  '</article></li>';
+}).join('');
+
+document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
