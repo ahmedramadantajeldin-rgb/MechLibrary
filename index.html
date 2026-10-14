@@ -377,13 +377,15 @@ const svg = (paths) =>
 const EXTERNAL = svg('<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>');
 
 /* ====== Render Drive feature card ====== */
-const linkAttrs = 'target="_blank" rel="noopener noreferrer"';
+/* Drive opens in new tab; course cards use same-tab navigation (see renderCard below) */
+
+const driveAttrs = 'target="_blank" rel="noopener noreferrer"';
 
 document.getElementById('drive-slot').innerHTML =
   '<article class="feature">' +
     '<div class="ico">' + svg(ICONS.drive) + '</div>' +
     '<div><h2>' + DRIVE.title + '</h2><p>' + DRIVE.description + '</p></div>' +
-    '<a class="btn" href="' + DRIVE.url + '" ' + linkAttrs + ' aria-label="' + DRIVE.cta + ' (opens in a new tab)">' +
+    '<a class="btn" href="' + DRIVE.url + '" ' + driveAttrs + ' aria-label="' + DRIVE.cta + ' (opens in a new tab)">' +
       DRIVE.cta + EXTERNAL +
     '</a>' +
   '</article>';
@@ -397,7 +399,7 @@ function renderCard(c) {
       '<div class="card-head"><h3>' + c.title + '</h3>' +
         (c.code ? '<span class="code">' + c.code + '</span>' : '') + '</div>' +
       '<p>' + c.description + '</p>' +
-      '<a class="btn" href="' + c.url + '" ' + linkAttrs + ' aria-label="Open Course: ' + c.title + ' (opens in a new tab)">Open Course' + EXTERNAL + '</a>' +
+      '<a class="btn" href="' + c.url + '" aria-label="Open Course: ' + c.title + '">Open Course</a>' +
     '</article>' +
   '</li>';
 }
