@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Mech Reminders | MechHub</title>
+<meta name="description" content="Submission deadlines, reminders, and course attachments.">
+<meta name="theme-color" content="#151515">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MechHub">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="icon" href="../icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.ico" sizes="48x48">
+<link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="stylesheet" href="reminders.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to reminders</a>
+
+<div id="offline-banner" role="status" aria-live="polite">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+  You're offline. Mech Reminders needs a connection to load deadlines.
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="flag-ps" viewBox="0 0 40 20">
+    <clipPath id="flag-clip"><rect width="40" height="20" rx="3"/></clipPath>
+    <g clip-path="url(#flag-clip)">
+      <rect width="40" height="6.67" fill="#000000"/>
+      <rect y="6.67" width="40" height="6.66" fill="#FFFFFF"/>
+      <rect y="13.33" width="40" height="6.67" fill="#007A3D"/>
+      <path d="M0 0l10 10L0 20z" fill="#CE1126"/>
+    </g>
+    <rect x=".5" y=".5" width="39" height="19" rx="2.5" fill="none" stroke="rgba(255,255,255,.5)"/>
+  </symbol>
+  <symbol id="logo-horizontal" viewBox="-118 -118 918 236"><defs><clipPath id="hdarkt"><rect x="-130" y="-130" width="260" height="138.70"/></clipPath></defs><path d="M20.35 -91.77L31.81 -107.39L53.44 -98.43L50.51 -79.28A94 94 0 0 1 79.28 -50.51L98.43 -53.44L107.39 -31.81L91.77 -20.35A94 94 0 0 1 91.77 20.35L107.39 31.81L98.43 53.44L79.28 50.51A94 94 0 0 1 50.51 79.28L53.44 98.43L31.81 107.39L20.35 91.77A94 94 0 0 1 -20.35 91.77L-31.81 107.39L-53.44 98.43L-50.51 79.28A94 94 0 0 1 -79.28 50.51L-98.43 53.44L-107.39 31.81L-91.77 20.35A94 94 0 0 1 -91.77 -20.35L-107.39 -31.81L-98.43 -53.44L-79.28 -50.51A94 94 0 0 1 -50.51 -79.28L-53.44 -98.43L-31.81 -107.39L-20.35 -91.77A94 94 0 0 1 20.35 -91.77ZM-54.00 -54.00L-33.00 -54.00L-33.00 54.00L-54.00 54.00ZM33.00 -54.00L54.00 -54.00L54.00 54.00L33.00 54.00Z" fill="#22A45D" fill-rule="evenodd"/><path d="M20.35 -91.77L31.81 -107.39L53.44 -98.43L50.51 -79.28A94 94 0 0 1 79.28 -50.51L98.43 -53.44L107.39 -31.81L91.77 -20.35A94 94 0 0 1 91.77 20.35L107.39 31.81L98.43 53.44L79.28 50.51A94 94 0 0 1 50.51 79.28L53.44 98.43L31.81 107.39L20.35 91.77A94 94 0 0 1 -20.35 91.77L-31.81 107.39L-53.44 98.43L-50.51 79.28A94 94 0 0 1 -79.28 50.51L-98.43 53.44L-107.39 31.81L-91.77 20.35A94 94 0 0 1 -91.77 -20.35L-107.39 -31.81L-98.43 -53.44L-79.28 -50.51A94 94 0 0 1 -50.51 -79.28L-53.44 -98.43L-31.81 -107.39L-20.35 -91.77A94 94 0 0 1 20.35 -91.77ZM-54.00 -54.00L-33.00 -54.00L-33.00 54.00L-54.00 54.00ZM33.00 -54.00L54.00 -54.00L54.00 54.00L33.00 54.00Z" fill="#FFFFFF" fill-rule="evenodd" clip-path="url(#hdarkt)"/><path d="M-33.00 -54.00L0.00 -21.00L33.00 -54.00L33.00 -24.30L0.00 8.70L-33.00 -24.30Z" fill="#E4312B"/><g transform="translate(156,53.17)"><path d="M9.45 0.00V-106.35H28.80L64.95 -51.60L101.10 -106.35H120.45V0.00H93.90V-54.45L73.65 -24.00H56.25L36.15 -54.45V0.00ZM173.10 1.65Q160.80 1.65 151.35 -3.22Q141.90 -8.10 136.50 -16.80Q131.10 -25.50 131.10 -36.75Q131.10 -47.85 136.35 -56.47Q141.60 -65.10 150.68 -70.12Q159.75 -75.15 171.15 -75.15Q182.25 -75.15 190.88 -70.42Q199.50 -65.70 204.38 -57.38Q209.25 -49.05 209.25 -38.40Q209.25 -36.15 209.03 -33.83Q208.80 -31.50 208.05 -28.50L156.60 -28.20Q157.05 -27.15 157.50 -26.10Q159.60 -21.60 163.50 -19.35Q167.40 -17.10 173.10 -17.10Q178.50 -17.10 182.62 -18.90Q186.75 -20.70 190.05 -24.45L203.70 -10.80Q198.30 -4.65 190.57 -1.50Q182.85 1.65 173.10 1.65ZM156.60 -45.15 185.10 -45.30Q184.80 -46.95 184.20 -48.30Q182.55 -52.20 179.40 -54.30Q176.25 -56.40 171.45 -56.40Q166.50 -56.40 162.90 -54.00Q159.30 -51.60 157.35 -47.25Q156.90 -46.20 156.60 -45.15ZM253.95 1.65Q242.25 1.65 232.88 -3.30Q223.50 -8.25 218.10 -16.95Q212.70 -25.65 212.70 -36.60Q212.70 -47.70 218.18 -56.40Q223.65 -65.10 233.03 -70.12Q242.40 -75.15 254.25 -75.15Q262.80 -75.15 269.85 -72.30Q276.90 -69.45 282.75 -63.75L266.25 -47.25Q264.00 -49.50 261.07 -50.62Q258.15 -51.75 254.25 -51.75Q250.05 -51.75 246.68 -49.88Q243.30 -48.00 241.28 -44.70Q239.25 -41.40 239.25 -36.75Q239.25 -32.25 241.28 -28.88Q243.30 -25.50 246.68 -23.55Q250.05 -21.60 254.25 -21.60Q258.45 -21.60 261.45 -22.95Q264.45 -24.30 266.70 -26.85L283.35 -10.35Q277.20 -4.35 270.07 -1.35Q262.95 1.65 253.95 1.65ZM338.85 0.00V-41.40Q338.85 -46.50 335.85 -49.42Q332.85 -52.35 328.20 -52.35Q325.05 -52.35 322.57 -51.00Q320.10 -49.65 318.75 -47.25Q317.40 -44.85 317.40 -41.40V0.00H291.30V-109.35H317.40V-69.00Q319.05 -70.20 321.00 -71.40Q327.45 -74.85 336.00 -74.85Q344.85 -74.85 351.38 -71.32Q357.90 -67.80 361.42 -61.65Q364.95 -55.50 364.95 -47.40V0.00Z" fill="#FFFFFF"/><path d="M11.40 0.00V-105.00H28.65V-62.25H78.15V-105.00H95.40V0.00H78.15V-46.50H28.65V0.00ZM144.00 1.50Q134.85 1.50 127.72 -2.55Q120.60 -6.60 116.62 -13.72Q112.65 -20.85 112.65 -30.15V-72.00H129.15V-30.90Q129.15 -25.65 130.88 -21.98Q132.60 -18.30 135.97 -16.35Q139.35 -14.40 144.00 -14.40Q151.20 -14.40 155.02 -18.67Q158.85 -22.95 158.85 -30.90V-72.00H175.35V-30.15Q175.35 -20.70 171.38 -13.57Q167.40 -6.45 160.35 -2.48Q153.30 1.50 144.00 1.50ZM229.05 1.50Q220.80 1.50 214.35 -2.10Q210.00 -4.35 207.00 -7.80V0.00H190.50V-108.00H207.00V-64.05Q210.15 -67.65 214.50 -70.05Q220.95 -73.50 229.05 -73.50Q238.80 -73.50 246.68 -68.47Q254.55 -63.45 259.12 -54.97Q263.70 -46.50 263.70 -35.85Q263.70 -25.35 259.12 -16.88Q254.55 -8.40 246.68 -3.45Q238.80 1.50 229.05 1.50ZM226.35 -14.10Q232.35 -14.10 236.93 -16.88Q241.50 -19.65 244.12 -24.60Q246.75 -29.55 246.75 -36.00Q246.75 -42.45 244.12 -47.40Q241.50 -52.35 236.93 -55.12Q232.35 -57.90 226.35 -57.90Q220.35 -57.90 215.70 -55.12Q211.05 -52.35 208.50 -47.40Q205.95 -42.45 205.95 -36.00Q205.95 -29.55 208.50 -24.60Q211.05 -19.65 215.70 -16.88Q220.35 -14.10 226.35 -14.10Z" transform="translate(369.60,0)" fill="#22A45D"/></g>
+</symbol>
+  <symbol id="logo-icon" viewBox="-120 -120 240 240"><defs><clipPath id="ict"><rect x="-130" y="-130" width="260" height="140.77"/></clipPath></defs><path d="M18.13 -93.25L28.99 -108.18L56.00 -96.99L53.12 -78.76A95 95 0 0 1 78.76 -53.12L96.99 -56.00L108.18 -28.99L93.25 -18.13A95 95 0 0 1 93.25 18.13L108.18 28.99L96.99 56.00L78.76 53.12A95 95 0 0 1 53.12 78.76L56.00 96.99L28.99 108.18L18.13 93.25A95 95 0 0 1 -18.13 93.25L-28.99 108.18L-56.00 96.99L-53.12 78.76A95 95 0 0 1 -78.76 53.12L-96.99 56.00L-108.18 28.99L-93.25 18.13A95 95 0 0 1 -93.25 -18.13L-108.18 -28.99L-96.99 -56.00L-78.76 -53.12A95 95 0 0 1 -53.12 -78.76L-56.00 -96.99L-28.99 -108.18L-18.13 -93.25A95 95 0 0 1 18.13 -93.25ZM-62.00 -62.00L-36.00 -62.00L-36.00 62.00L-62.00 62.00ZM36.00 -62.00L62.00 -62.00L62.00 62.00L36.00 62.00Z" fill="#22A45D" fill-rule="evenodd"/><path d="M18.13 -93.25L28.99 -108.18L56.00 -96.99L53.12 -78.76A95 95 0 0 1 78.76 -53.12L96.99 -56.00L108.18 -28.99L93.25 -18.13A95 95 0 0 1 93.25 18.13L108.18 28.99L96.99 56.00L78.76 53.12A95 95 0 0 1 53.12 78.76L56.00 96.99L28.99 108.18L18.13 93.25A95 95 0 0 1 -18.13 93.25L-28.99 108.18L-56.00 96.99L-53.12 78.76A95 95 0 0 1 -78.76 53.12L-96.99 56.00L-108.18 28.99L-93.25 18.13A95 95 0 0 1 -93.25 -18.13L-108.18 -28.99L-96.99 -56.00L-78.76 -53.12A95 95 0 0 1 -53.12 -78.76L-56.00 -96.99L-28.99 -108.18L-18.13 -93.25A95 95 0 0 1 18.13 -93.25ZM-62.00 -62.00L-36.00 -62.00L-36.00 62.00L-62.00 62.00ZM36.00 -62.00L62.00 -62.00L62.00 62.00L36.00 62.00Z" fill="#FFFFFF" fill-rule="evenodd" clip-path="url(#ict)"/><path d="M-36.00 -62.00L0.00 -26.00L36.00 -62.00L36.00 -25.23L0.00 10.77L-36.00 -25.23Z" fill="#E4312B"/>
+</symbol>
+</svg>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="MechHub home">
+      <svg class="logo" viewBox="0 0 918 236" aria-hidden="true"><use href="#logo-horizontal"/></svg>
+      <svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg>
+    </a>
+    <a class="nav-link" href="../#resources">All courses</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="rem-hero" aria-labelledby="page-title">
+    <div class="wrap">
+      <h1 id="page-title">Mech Reminders</h1>
+      <p class="lead">Submission deadlines, reminders, and course attachments.</p>
+      <div class="stat-strip" id="stats" aria-label="Summary">
+        <div class="stat"><span class="stat-num" id="stat-upcoming">–</span><span class="stat-lbl">Upcoming</span></div>
+        <div class="stat"><span class="stat-num" id="stat-overdue">–</span><span class="stat-lbl">Deadline passed, still open</span></div>
+        <div class="stat"><span class="stat-num" id="stat-past">–</span><span class="stat-lbl">Closed</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap body-wrap">
+    <noscript><div class="notice error"><div>Mech Reminders needs JavaScript to load deadlines.</div></div></noscript>
+
+    <div id="status" role="status" aria-live="polite"></div>
+
+    <div class="account" id="account" hidden></div>
+
+    <section class="admin" id="admin" aria-labelledby="admin-title" hidden>
+      <div class="admin-head">
+        <h2 id="admin-title">Manage submissions</h2>
+        <button type="button" class="btn" id="admin-new">+ New submission</button>
+      </div>
+      <p class="hint">Visible only to the two authorized administrators. Students see published records only.</p>
+      <ul class="admin-list" id="admin-list"></ul>
+    </section>
+
+    <section id="board" hidden aria-label="Submissions">
+      <div class="toolbar" role="group" aria-label="Filter and sort">
+        <div class="field"><label for="flt-subject">Subject</label><select id="flt-subject"></select></div>
+        <div class="field"><label for="flt-type">Submission type</label><select id="flt-type"></select></div>
+        <div class="field"><label for="flt-status">Status</label>
+          <select id="flt-status">
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="overdue">Deadline passed, still open</option>
+            <option value="past">Closed</option>
+          </select></div>
+        <div class="field"><label for="flt-sort">Sort by</label>
+          <select id="flt-sort">
+            <option value="smart">Most urgent first</option>
+            <option value="deadline-asc">Deadline: earliest first</option>
+            <option value="deadline-desc">Deadline: latest first</option>
+            <option value="subject">Subject A–Z</option>
+          </select></div>
+      </div>
+      <p class="tz-note" style="margin-top:10px">All times are shown in Cairo time (Africa/Cairo). This page shows the official deadline and closing time only — it does not know whether you have submitted.</p>
+
+      <details class="panel" id="notify-box" style="margin-top:16px">
+        <summary>Reminder settings</summary>
+        <div class="panel-body">
+          <label class="check"><input type="checkbox" id="n-enable"><span>Show a browser notification before deadlines</span></label>
+          <fieldset id="n-leads">
+            <legend>Notify me</legend>
+            <label class="check"><input type="checkbox" value="86400000"><span>24 hours before</span></label>
+            <label class="check"><input type="checkbox" value="10800000"><span>3 hours before</span></label>
+            <label class="check"><input type="checkbox" value="3600000"><span>1 hour before</span></label>
+          </fieldset>
+          <p class="hint" id="n-hint">These notifications work only while Mech Reminders is open (in a browser tab or the installed app) on this device. They are not push messages: nothing is sent when the app is closed. Your choice is saved on this device only.</p>
+        </div>
+      </details>
+
+      <div id="list" style="margin-top:24px"></div>
+      <p class="empty" id="empty" hidden>No submissions match these filters.</p>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span class="foot-brand"><svg class="logo" viewBox="0 0 240 240" aria-hidden="true"><use href="#logo-icon"/></svg><span class="fb-text"><strong>MechHub</strong><small>Mech Reminders</small></span></span>
+    <span>Dates are set by the class administrators</span>
+    <span>&copy; <span id="year">2026</span> MechHub</span>
+  </div>
+</footer>
+
+<!-- Create / edit -->
+<dialog id="form-dialog" aria-labelledby="form-title">
+  <form class="dlg" id="form" novalidate>
+    <h2 id="form-title">New submission</h2>
+    <div class="dlg-error" id="form-error" role="alert"></div>
+    <div class="form-grid two">
+      <div class="field"><label for="f-subject">Subject name *</label><input type="text" id="f-subject" maxlength="120" autocomplete="off" list="subject-options"><datalist id="subject-options"></datalist><p class="err" id="e-subject"></p></div>
+      <div class="field"><label for="f-type">Submission type *</label><select id="f-type"></select><p class="err" id="e-type"></p></div>
+    </div>
+    <div class="form-grid two">
+      <div class="field"><label for="f-deadline">Official deadline * (Cairo time)</label><input type="datetime-local" id="f-deadline"><p class="err" id="e-deadline"></p></div>
+      <div class="field"><label for="f-closes">Closing / end time * (Cairo time)</label><input type="datetime-local" id="f-closes"><p class="err" id="e-closesAt"></p></div>
+    </div>
+    <div class="form-grid two">
+      <div class="field"><label for="f-code">Course code (optional)</label><input type="text" id="f-code" maxlength="40" autocomplete="off"><p class="err" id="e-courseCode"></p></div>
+      <div class="field"><label for="f-desc">Short description (optional)</label><textarea id="f-desc" maxlength="1000"></textarea><p class="err" id="e-description"></p></div>
+    </div>
+    <fieldset style="display:block">
+      <legend>PDF attachments (links)</legend>
+      <p class="hint" style="margin:4px 0 10px">Paste links to PDFs that already exist (for example a Google Drive share link). Files are not uploaded here. Links must start with https://</p>
+      <div id="f-atts" style="display:flex;flex-direction:column;gap:10px"></div>
+      <p class="err" id="e-attachments"></p>
+      <button type="button" class="btn btn-outline btn-sm" id="f-add-att" style="margin-top:10px">+ Add PDF link</button>
+    </fieldset>
+    <label class="check"><input type="checkbox" id="f-published"><span>Published (visible to students)</span></label>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-outline" id="f-cancel">Cancel</button>
+      <button type="button" class="btn btn-outline" id="f-preview">Preview</button>
+      <button type="submit" class="btn" id="f-save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Preview (also used as the "publish" confirmation) -->
+<dialog id="preview-dialog" aria-labelledby="preview-title">
+  <div class="dlg">
+    <h2 id="preview-title">Preview</h2>
+    <p class="preview-note" id="preview-note">This is how students will see it.</p>
+    <div id="preview-card"></div>
+    <div class="dlg-error" id="preview-error" role="alert"></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-outline" id="p-close">Close</button>
+      <button type="button" class="btn" id="p-publish" hidden>Publish</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Delete confirmation -->
+<dialog id="confirm-dialog" aria-labelledby="confirm-title">
+  <div class="dlg">
+    <h2 id="confirm-title">Delete this submission?</h2>
+    <p id="confirm-text"></p>
+    <div class="dlg-error" id="confirm-error" role="alert"></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-outline" id="c-cancel">Cancel</button>
+      <button type="button" class="btn btn-danger" id="c-delete">Delete permanently</button>
+    </div>
+  </div>
+</dialog>
+
+<script type="module" src="reminders.js"></script>
+</body>
+</html>

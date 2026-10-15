@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Mech Reminders — Firestore security rules.
+// These rules (not the web page) are what protect the data. Deploy them in the Firebase console
+// (Firestore Database → Rules → paste → Publish) or with `firebase deploy --only firestore:rules`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The only two people allowed to manage records. Identity comes from the verified Google sign-in token,
+    // which the browser cannot forge or edit.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'ahmedramadantajeldin@gmail.com',
+          'ahmedyasserr219@gmail.com'
+        ];
+    }
+
+    function validAttachment(a) {
+      return a is map
+        && a.keys().hasOnly(['title', 'url', 'description'])
+        && a.keys().hasAll(['title', 'url'])
+        && a.title is string && a.title.size() > 0 && a.title.size() <= 120
+        && a.url is string && a.url.size() <= 2000 && a.url.matches('^https://[^\\s]+$')
+        && (!('description' in a) || (a.description is string && a.description.size() <= 300));
+    }
+
+    // Rules have no loops, so up to 10 attachments are checked by index (keep in sync with MAX_ATTACHMENTS in core.js).
+    function validAttachments(l) {
+      return l is list && l.size() <= 10
+        && (l.size() < 1  || validAttachment(l[0]))
+        && (l.size() < 2  || validAttachment(l[1]))
+        && (l.size() < 3  || validAttachment(l[2]))
+        && (l.size() < 4  || validAttachment(l[3]))
+        && (l.size() < 5  || validAttachment(l[4]))
+        && (l.size() < 6  || validAttachment(l[5]))
+        && (l.size() < 7  || validAttachment(l[6]))
+        && (l.size() < 8  || validAttachment(l[7]))
+        && (l.size() < 9  || validAttachment(l[8]))
+        && (l.size() < 10 || validAttachment(l[9]));
+    }
+
+    function validSubmission(d) {
+      return d.keys().hasOnly(['subject', 'type', 'courseCode', 'description', 'deadline', 'closesAt',
+                               'attachments', 'published', 'createdAt', 'updatedAt'])
+        && d.keys().hasAll(['subject', 'type', 'deadline', 'closesAt', 'attachments', 'published', 'createdAt', 'updatedAt'])
+        && d.subject is string && d.subject.size() > 0 && d.subject.size() <= 120
+        && d.type in ['Assignment', 'Quiz', 'Midterm', 'M Assignment', 'M Quiz', 'M Midterm', 'M Project']
+        && (!('courseCode' in d) || (d.courseCode is string && d.courseCode.size() <= 40))
+        && (!('description' in d) || (d.description is string && d.description.size() <= 1000))
+        && d.deadline is timestamp && d.closesAt is timestamp && d.closesAt >= d.deadline
+        && d.published is bool
+        && validAttachments(d.attachments)
+        && d.updatedAt == request.time;
+    }
+
+    match /submissions/{id} {
+      // Anyone (signed in or not) may read PUBLISHED records. Drafts / unpublished records are readable by admins only.
+      // Queries from the public site therefore must filter on published == true (the site does).
+      allow get, list: if isAdmin() || resource.data.published == true;
+
+      allow create: if isAdmin()
+        && validSubmission(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isAdmin()
+        && validSubmission(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isAdmin();
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
