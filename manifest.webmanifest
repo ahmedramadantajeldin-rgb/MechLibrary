@@ -1,6 +1,6 @@
 {
   "id": "/MechLibrary/",
-  "name": "MechHub — Mechanical Engineering Study Hub",
+  "name": "MechHub",
   "short_name": "MechHub",
   "description": "A central hub for mechanical engineering courses, lecture notes, and class resources.",
   "start_url": "./",
@@ -21,15 +21,6 @@
     { "src": "icons/apple-touch-icon-180.png",        "sizes": "180x180", "type": "image/png", "purpose": "any" },
     { "src": "icons/favicon-32.png",                  "sizes": "32x32",   "type": "image/png", "purpose": "any" },
     { "src": "icons/favicon.svg",                     "sizes": "any",     "type": "image/svg+xml", "purpose": "any" }
-  ],
-  "screenshots": [
-    {
-      "src": "icons/android-chrome-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "MechHub home screen"
-    }
   ],
   "prefer_related_applications": false
 }

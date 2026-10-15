@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>MechHub | Mechanical Engineering Study Hub</title>
+<meta name="description" content="Your central destination for mechanical engineering courses, lecture notes, and class resources.">
+<meta name="theme-color" content="#151515">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MechHub">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
+<style>
+/* ====== Design tokens — MechHub identity (black / green / red / white) ======
+   Primary (green), brand black for dark surfaces, neutrals for the rest. */
+:root{
+  --ink:#151515;
+  --green:#168447;
+  --green-d:#126B3A;
+  --green-l:#22A45D;
+  --tint:#E9F5EE;
+  --paper:#F5F6F5;
+  --surface:#FFFFFF;
+  --steel:#4F5651;
+  --line:#D2D6D3;
+  --on-dark:#FFFFFF;
+  --on-dark-2:#D5D9D6;
+  --on-dark-3:#A9B0AB;
+  --dark-hair:rgba(255,255,255,.12);
+  --dark-line:rgba(255,255,255,.35);
+  --grid:rgba(255,255,255,.06);
+  --shadow-1:0 2px 8px rgba(21,21,21,.06);
+  --shadow-2:0 10px 24px rgba(21,21,21,.12);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --radius-card:12px;
+  --radius-btn:8px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--font);-webkit-text-size-adjust:100%}
+h1,h2,h3{margin:0;line-height:1.2;overflow-wrap:anywhere;font-weight:700;letter-spacing:0}
+a{color:inherit}
+.wrap{width:min(1120px,100% - 40px);margin-inline:auto}
+:focus-visible{outline:3px solid var(--green);outline-offset:3px}
+.site-header :focus-visible,.hero :focus-visible,.site-footer :focus-visible{outline-color:var(--green-l)}
+img{max-width:100%;height:auto}
+
+/* Skip to content */
+.skip-link{position:absolute;top:-100px;left:12px;z-index:100;padding:10px 18px;border-radius:6px;background:var(--green);color:#fff;font-weight:700;text-decoration:none;transition:top .15s}
+.skip-link:focus{top:12px}
+
+/* Offline banner */
+#offline-banner{display:none;align-items:center;gap:10px;justify-content:center;padding:10px 16px;background:#7b3800;color:#fff;font-size:.9rem;text-align:center}
+#offline-banner svg{flex:none;width:18px;height:18px}
+body.offline #offline-banner{display:flex}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:0 20px;border-radius:var(--radius-btn);background:var(--green);color:var(--on-dark);font-family:inherit;font-size:.95rem;font-weight:600;line-height:1.2;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:background .2s,transform .2s}
+.btn:hover{background:var(--green-d)}
+.btn svg{width:18px;height:18px;flex:none}
+.hero .btn{border-color:var(--dark-line)}
+.card .btn:focus-visible,.feature .btn:focus-visible{outline:none}
+.card .btn::after,.feature .btn::after{content:"";position:absolute;inset:0;border-radius:inherit}
+
+/* Header */
+.site-header{position:sticky;top:0;z-index:10;background:var(--ink);color:var(--on-dark);border-bottom:1px solid var(--dark-hair)}
+.site-header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:60px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.flag,.brand .flag{display:block;flex:none;width:36px;height:18px;color:inherit}
+.foot-brand{display:inline-flex;align-items:center;gap:12px}
+.brand .logo{width:140px;height:36px;flex:none}
+.foot-brand .logo{flex:none;width:36px;height:36px}
+.fb-text{display:flex;flex-direction:column;line-height:1.25}
+.fb-text small{font-size:.8rem;color:var(--on-dark-3)}
+
+/* Animated art on card hover */
+.card .art{position:absolute;right:-14px;bottom:-14px;width:150px;height:150px;color:var(--green);opacity:.1;z-index:-1;pointer-events:none;transition:transform .5s ease,opacity .3s}
+.card:is(:hover,:focus-within,:active) .art{opacity:.2}
+[data-t=economy]:is(:hover,:focus-within,:active) .art{transform:translateY(-8px)}
+[data-t=thermo]:is(:hover,:focus-within,:active) .art{transform:scale(1.12)}
+[data-t=design1]:is(:hover,:focus-within,:active) .art{transform:rotate(25deg)}
+[data-t=numerical]:is(:hover,:focus-within,:active) .art{transform:translateX(-8px) scale(1.05)}
+[data-t=electrical]:is(:hover,:focus-within,:active) .art{transform:scale(1.08)}
+[data-t=fluid]:is(:hover,:focus-within,:active) .art{transform:translateX(-12px)}
+[data-t=measure]:is(:hover,:focus-within,:active) .art{transform:rotate(-10deg)}
+[data-t=heat]:is(:hover,:focus-within,:active) .art{transform:translateY(-10px) scale(1.06)}
+[data-t=design2]:is(:hover,:focus-within,:active) .art{transform:rotate(-15deg) scale(1.05)}
+@media (hover:none){.card .art{opacity:.14}}
+@media (prefers-reduced-motion:reduce){.card .art{transform:none!important}}
+
+.nav-link{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--dark-line);border-radius:var(--radius-btn);color:var(--on-dark);font-weight:600;font-size:.95rem;text-decoration:none;transition:background .2s}
+.nav-link:hover{background:var(--dark-hair)}
+
+/* Hero */
+.hero{position:relative;overflow:hidden;color:var(--on-dark);padding:72px 0 84px;background:linear-gradient(var(--grid) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/32px 32px,var(--ink)}
+.hero .wrap{position:relative}
+.hero h1{font-size:clamp(2.2rem,6.5vw,3.9rem);max-width:12ch}
+.hero p{max-width:52ch;margin:18px 0 30px;color:var(--on-dark-2);font-size:clamp(1rem,2.4vw,1.2rem)}
+.deco{position:absolute;right:max(-60px,calc(50% - 640px));top:50%;width:min(480px,60vw);transform:translateY(-50%);color:var(--green-l);opacity:.45;pointer-events:none}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:repeating-linear-gradient(90deg,var(--green-l) 0 48px,transparent 48px 64px)}
+
+/* Install button (PWA) */
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px}
+.btn[hidden],.install-tip[hidden]{display:none}
+.btn-ghost{background:transparent}
+.btn-ghost:hover{background:var(--dark-hair)}
+.install-tip{margin-top:16px;max-width:52ch;padding:12px 16px;border:1px solid var(--dark-line);border-radius:var(--radius-btn);background:var(--dark-hair);color:var(--on-dark-2);font-size:.95rem}
+
+/* ── Search / filter bar ─────────────────────────────────────────────────── */
+.search-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:32px 0 8px}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--steel);pointer-events:none}
+#search{width:100%;min-height:44px;padding:0 16px 0 44px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem;appearance:none;transition:border-color .2s}
+#search:focus{outline:none;border-color:var(--green)}
+#search::placeholder{color:var(--steel)}
+.filter-chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:100px;border:1.5px solid var(--line);background:var(--surface);color:var(--steel);font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.chip:hover{border-color:var(--green-d);color:var(--green-d)}
+.chip[aria-pressed=true]{background:var(--green);border-color:var(--green);color:#fff}
+#no-results{display:none;text-align:center;padding:48px 0;color:var(--steel)}
+#no-results.visible{display:block}
+
+/* Resources */
+#resources{padding:56px 0 72px}
+.feature{position:relative;display:flex;align-items:center;gap:24px;padding:28px;background:var(--tint);border:1px solid var(--green);border-left:8px solid var(--green);border-radius:14px;box-shadow:var(--shadow-2)}
+.feature:focus-within,.card:focus-within{outline:3px solid var(--green);outline-offset:3px}
+.feature .ico{flex:none;width:68px;height:68px;border-radius:14px;background:var(--ink);color:var(--green-l);display:grid;place-items:center}
+.feature .ico svg{width:36px;height:36px}
+.feature h2{font-size:clamp(1.35rem,3.5vw,1.8rem)}
+.feature p{margin:6px 0 0;color:var(--steel);max-width:56ch}
+.feature .btn{margin-left:auto;flex:none}
+
+/* Section title + category label */
+.section-title{font-size:clamp(1.6rem,4vw,2.2rem);margin:56px 0 0;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+.category-label{font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--steel);margin:32px 0 10px}
+.grid{list-style:none;margin:0;padding:0;display:grid;gap:20px;grid-template-columns:1fr}
+
+/* Course cards */
+.card{position:relative;isolation:isolate;height:100%;display:flex;flex-direction:column;gap:12px;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-1);transition:transform .2s,border-color .2s,box-shadow .2s}
+.card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;border-radius:11px 11px 0 0;background:var(--green)}
+.card:hover{transform:translateY(-3px);border-color:var(--green);box-shadow:var(--shadow-2)}
+.card-top{display:flex;align-items:flex-start}
+.ico{width:50px;height:50px;border-radius:10px;background:var(--tint);color:var(--green);display:grid;place-items:center}
+.ico svg{width:27px;height:27px}
+.card-head{display:flex;flex-direction:column;gap:4px}
+.card h3{font-size:1.25rem}
+.code{font-size:.82rem;font-weight:600;line-height:1.3;letter-spacing:.06em;color:var(--steel);overflow-wrap:anywhere}
+.card p{flex:1;margin:0;color:var(--steel);font-size:.95rem}
+.card .btn{align-self:flex-start;margin-top:4px}
+
+/* Footer */
+.site-footer{background:var(--ink);color:var(--on-dark-2);padding:26px 0;font-size:.92rem}
+.site-footer .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 24px}
+.site-footer strong{color:var(--on-dark);font-size:1.1rem;font-weight:700}
+
+/* Stat strip */
+.stat-strip{display:flex;gap:28px;flex-wrap:wrap;margin-top:32px}
+.stat{display:flex;flex-direction:column;align-items:flex-start}
+.stat-num{font-size:1.9rem;font-weight:800;line-height:1;color:var(--green-l)}
+.stat-lbl{font-size:.82rem;color:var(--on-dark-3);margin-top:2px;letter-spacing:.04em}
+
+@media (min-width:600px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:360px){
+  .site-header .wrap{gap:12px}
+  .nav-link{padding:0 10px;font-size:.88rem}
+}
+@media (max-width:720px){
+  .hero{padding:52px 0 60px}
+  .deco{opacity:.2;right:-120px;width:340px}
+  .feature{flex-direction:column;align-items:flex-start;padding:22px}
+  .feature .btn{margin-left:0;width:100%}
+  .hero .btn{width:100%}
+  .search-bar{flex-direction:column;align-items:stretch}
+  .search-wrap{min-width:auto}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important;animation:none!important}
+  .card:hover{transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Skip-navigation for keyboard users -->
+<a class="skip-link" href="#resources">Skip to courses</a>
+
+<!-- Offline banner (shown via JS when navigator.onLine becomes false) -->
+<div id="offline-banner" role="status" aria-live="polite">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1l22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+  You're offline. MechHub is available, but course sites require an internet connection.
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="flag-ps" viewBox="0 0 40 20">
+    <clipPath id="flag-clip"><rect width="40" height="20" rx="3"/></clipPath>
+    <g clip-path="url(#flag-clip)">
+      <rect width="40" height="6.67" fill="#000000"/>
+      <rect y="6.67" width="40" height="6.66" fill="#FFFFFF"/>
+      <rect y="13.33" width="40" height="6.67" fill="#007A3D"/>
+      <path d="M0 0l10 10L0 20z" fill="#CE1126"/>
+    </g>
+    <rect x=".5" y=".5" width="39" height="19" rx="2.5" fill="none" stroke="rgba(255,255,255,.5)"/>
+  </symbol>
+  <symbol id="logo-horizontal" viewBox="-118 -118 918 236"><defs><clipPath id="hdarkt"><rect x="-130" y="-130" width="260" height="138.70"/></clipPath></defs><path d="M20.35 -91.77L31.81 -107.39L53.44 -98.43L50.51 -79.28A94 94 0 0 1 79.28 -50.51L98.43 -53.44L107.39 -31.81L91.77 -20.35A94 94 0 0 1 91.77 20.35L107.39 31.81L98.43 53.44L79.28 50.51A94 94 0 0 1 50.51 79.28L53.44 98.43L31.81 107.39L20.35 91.77A94 94 0 0 1 -20.35 91.77L-31.81 107.39L-53.44 98.43L-50.51 79.28A94 94 0 0 1 -79.28 50.51L-98.43 53.44L-107.39 31.81L-91.77 20.35A94 94 0 0 1 -91.77 -20.35L-107.39 -31.81L-98.43 -53.44L-79.28 -50.51A94 94 0 0 1 -50.51 -79.28L-53.44 -98.43L-31.81 -107.39L-20.35 -91.77A94 94 0 0 1 20.35 -91.77ZM-54.00 -54.00L-33.00 -54.00L-33.00 54.00L-54.00 54.00ZM33.00 -54.00L54.00 -54.00L54.00 54.00L33.00 54.00Z" fill="#22A45D" fill-rule="evenodd"/><path d="M20.35 -91.77L31.81 -107.39L53.44 -98.43L50.51 -79.28A94 94 0 0 1 79.28 -50.51L98.43 -53.44L107.39 -31.81L91.77 -20.35A94 94 0 0 1 91.77 20.35L107.39 31.81L98.43 53.44L79.28 50.51A94 94 0 0 1 50.51 79.28L53.44 98.43L31.81 107.39L20.35 91.77A94 94 0 0 1 -20.35 91.77L-31.81 107.39L-53.44 98.43L-50.51 79.28A94 94 0 0 1 -79.28 50.51L-98.43 53.44L-107.39 31.81L-91.77 20.35A94 94 0 0 1 -91.77 -20.35L-107.39 -31.81L-98.43 -53.44L-79.28 -50.51A94 94 0 0 1 -50.51 -79.28L-53.44 -98.43L-31.81 -107.39L-20.35 -91.77A94 94 0 0 1 20.35 -91.77ZM-54.00 -54.00L-33.00 -54.00L-33.00 54.00L-54.00 54.00ZM33.00 -54.00L54.00 -54.00L54.00 54.00L33.00 54.00Z" fill="#FFFFFF" fill-rule="evenodd" clip-path="url(#hdarkt)"/><path d="M-33.00 -54.00L0.00 -21.00L33.00 -54.00L33.00 -24.30L0.00 8.70L-33.00 -24.30Z" fill="#E4312B"/><g transform="translate(156,53.17)"><path d="M9.45 0.00V-106.35H28.80L64.95 -51.60L101.10 -106.35H120.45V0.00H93.90V-54.45L73.65 -24.00H56.25L36.15 -54.45V0.00ZM173.10 1.65Q160.80 1.65 151.35 -3.22Q141.90 -8.10 136.50 -16.80Q131.10 -25.50 131.10 -36.75Q131.10 -47.85 136.35 -56.47Q141.60 -65.10 150.68 -70.12Q159.75 -75.15 171.15 -75.15Q182.25 -75.15 190.88 -70.42Q199.50 -65.70 204.38 -57.38Q209.25 -49.05 209.25 -38.40Q209.25 -36.15 209.03 -33.83Q208.80 -31.50 208.05 -28.50L156.60 -28.20Q157.05 -27.15 157.50 -26.10Q159.60 -21.60 163.50 -19.35Q167.40 -17.10 173.10 -17.10Q178.50 -17.10 182.62 -18.90Q186.75 -20.70 190.05 -24.45L203.70 -10.80Q198.30 -4.65 190.57 -1.50Q182.85 1.65 173.10 1.65ZM156.60 -45.15 185.10 -45.30Q184.80 -46.95 184.20 -48.30Q182.55 -52.20 179.40 -54.30Q176.25 -56.40 171.45 -56.40Q166.50 -56.40 162.90 -54.00Q159.30 -51.60 157.35 -47.25Q156.90 -46.20 156.60 -45.15ZM253.95 1.65Q242.25 1.65 232.88 -3.30Q223.50 -8.25 218.10 -16.95Q212.70 -25.65 212.70 -36.60Q212.70 -47.70 218.18 -56.40Q223.65 -65.10 233.03 -70.12Q242.40 -75.15 254.25 -75.15Q262.80 -75.15 269.85 -72.30Q276.90 -69.45 282.75 -63.75L266.25 -47.25Q264.00 -49.50 261.07 -50.62Q258.15 -51.75 254.25 -51.75Q250.05 -51.75 246.68 -49.88Q243.30 -48.00 241.28 -44.70Q239.25 -41.40 239.25 -36.75Q239.25 -32.25 241.28 -28.88Q243.30 -25.50 246.68 -23.55Q250.05 -21.60 254.25 -21.60Q258.45 -21.60 261.45 -22.95Q264.45 -24.30 266.70 -26.85L283.35 -10.35Q277.20 -4.35 270.07 -1.35Q262.95 1.65 253.95 1.65ZM338.85 0.00V-41.40Q338.85 -46.50 335.85 -49.42Q332.85 -52.35 328.20 -52.35Q325.05 -52.35 322.57 -51.00Q320.10 -49.65 318.75 -47.25Q317.40 -44.85 317.40 -41.40V0.00H291.30V-109.35H317.40V-69.00Q319.05 -70.20 321.00 -71.40Q327.45 -74.85 336.00 -74.85Q344.85 -74.85 351.38 -71.32Q357.90 -67.80 361.42 -61.65Q364.95 -55.50 364.95 -47.40V0.00Z" fill="#FFFFFF"/><path d="M11.40 0.00V-105.00H28.65V-62.25H78.15V-105.00H95.40V0.00H78.15V-46.50H28.65V0.00ZM144.00 1.50Q134.85 1.50 127.72 -2.55Q120.60 -6.60 116.62 -13.72Q112.65 -20.85 112.65 -30.15V-72.00H129.15V-30.90Q129.15 -25.65 130.88 -21.98Q132.60 -18.30 135.97 -16.35Q139.35 -14.40 144.00 -14.40Q151.20 -14.40 155.02 -18.67Q158.85 -22.95 158.85 -30.90V-72.00H175.35V-30.15Q175.35 -20.70 171.38 -13.57Q167.40 -6.45 160.35 -2.48Q153.30 1.50 144.00 1.50ZM229.05 1.50Q220.80 1.50 214.35 -2.10Q210.00 -4.35 207.00 -7.80V0.00H190.50V-108.00H207.00V-64.05Q210.15 -67.65 214.50 -70.05Q220.95 -73.50 229.05 -73.50Q238.80 -73.50 246.68 -68.47Q254.55 -63.45 259.12 -54.97Q263.70 -46.50 263.70 -35.85Q263.70 -25.35 259.12 -16.88Q254.55 -8.40 246.68 -3.45Q238.80 1.50 229.05 1.50ZM226.35 -14.10Q232.35 -14.10 236.93 -16.88Q241.50 -19.65 244.12 -24.60Q246.75 -29.55 246.75 -36.00Q246.75 -42.45 244.12 -47.40Q241.50 -52.35 236.93 -55.12Q232.35 -57.90 226.35 -57.90Q220.35 -57.90 215.70 -55.12Q211.05 -52.35 208.50 -47.40Q205.95 -42.45 205.95 -36.00Q205.95 -29.55 208.50 -24.60Q211.05 -19.65 215.70 -16.88Q220.35 -14.10 226.35 -14.10Z" transform="translate(369.60,0)" fill="#22A45D"/></g>
+</symbol>
+  <symbol id="logo-icon" viewBox="-120 -120 240 240"><defs><clipPath id="ict"><rect x="-130" y="-130" width="260" height="140.77"/></clipPath></defs><path d="M18.13 -93.25L28.99 -108.18L56.00 -96.99L53.12 -78.76A95 95 0 0 1 78.76 -53.12L96.99 -56.00L108.18 -28.99L93.25 -18.13A95 95 0 0 1 93.25 18.13L108.18 28.99L96.99 56.00L78.76 53.12A95 95 0 0 1 53.12 78.76L56.00 96.99L28.99 108.18L18.13 93.25A95 95 0 0 1 -18.13 93.25L-28.99 108.18L-56.00 96.99L-53.12 78.76A95 95 0 0 1 -78.76 53.12L-96.99 56.00L-108.18 28.99L-93.25 18.13A95 95 0 0 1 -93.25 -18.13L-108.18 -28.99L-96.99 -56.00L-78.76 -53.12A95 95 0 0 1 -53.12 -78.76L-56.00 -96.99L-28.99 -108.18L-18.13 -93.25A95 95 0 0 1 18.13 -93.25ZM-62.00 -62.00L-36.00 -62.00L-36.00 62.00L-62.00 62.00ZM36.00 -62.00L62.00 -62.00L62.00 62.00L36.00 62.00Z" fill="#22A45D" fill-rule="evenodd"/><path d="M18.13 -93.25L28.99 -108.18L56.00 -96.99L53.12 -78.76A95 95 0 0 1 78.76 -53.12L96.99 -56.00L108.18 -28.99L93.25 -18.13A95 95 0 0 1 93.25 18.13L108.18 28.99L96.99 56.00L78.76 53.12A95 95 0 0 1 53.12 78.76L56.00 96.99L28.99 108.18L18.13 93.25A95 95 0 0 1 -18.13 93.25L-28.99 108.18L-56.00 96.99L-53.12 78.76A95 95 0 0 1 -78.76 53.12L-96.99 56.00L-108.18 28.99L-93.25 18.13A95 95 0 0 1 -93.25 -18.13L-108.18 -28.99L-96.99 -56.00L-78.76 -53.12A95 95 0 0 1 -53.12 -78.76L-56.00 -96.99L-28.99 -108.18L-18.13 -93.25A95 95 0 0 1 18.13 -93.25ZM-62.00 -62.00L-36.00 -62.00L-36.00 62.00L-62.00 62.00ZM36.00 -62.00L62.00 -62.00L62.00 62.00L36.00 62.00Z" fill="#FFFFFF" fill-rule="evenodd" clip-path="url(#ict)"/><path d="M-36.00 -62.00L0.00 -26.00L36.00 -62.00L36.00 -25.23L0.00 10.77L-36.00 -25.23Z" fill="#E4312B"/>
+</symbol>
+</svg>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="MechHub home">
+      <svg class="logo" viewBox="0 0 918 236" aria-hidden="true"><use href="#logo-horizontal"/></svg>
+      <svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg>
+    </a>
+    <a class="nav-link" href="#resources">Courses</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-title">
+    <svg class="deco" viewBox="0 0 400 400" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+      <circle cx="200" cy="190" r="150"/>
+      <circle cx="200" cy="190" r="108" stroke-dasharray="6 5"/>
+      <circle cx="200" cy="190" r="42"/>
+      <circle cx="200" cy="190" r="10"/>
+      <path d="M30 190h340M200 20v340" stroke-dasharray="14 4 3 4"/>
+      <path d="M50 378h300M50 368v20M350 368v20"/>
+      <path d="M50 378l10-4v8zM350 378l-10-4v8z" fill="currentColor"/>
+    </svg>
+    <div class="wrap">
+      <h1 id="hero-title">Mechanical Engineering Study Hub</h1>
+      <p>Your central destination for mechanical engineering courses, lecture notes, and class resources.</p>
+      <div class="hero-actions">
+        <a class="btn" href="#resources">Explore Study Resources</a>
+        <button type="button" class="btn btn-ghost" id="install-btn" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>
+          Install MechHub
+        </button>
+      </div>
+      <div class="install-tip" id="ios-tip" role="note" aria-live="polite" hidden>To install MechHub on iPhone or iPad, open this page in Safari, tap the <strong>Share</strong> button, then choose <strong>Add to Home Screen</strong>.</div>
+
+      <!-- Stats strip -->
+      <div class="stat-strip" aria-label="Library statistics">
+        <div class="stat"><span class="stat-num" id="stat-courses">9</span><span class="stat-lbl">Courses</span></div>
+        <div class="stat"><span class="stat-num">1</span><span class="stat-lbl">Shared Drive</span></div>
+        <div class="stat"><span class="stat-num">∞</span><span class="stat-lbl">Resources</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="resources" aria-label="Study resources">
+    <div class="wrap">
+      <div id="drive-slot"></div>
+
+      <h2 class="section-title">Explore Your Courses</h2>
+
+      <!-- Search & filter -->
+      <div class="search-bar" role="search" aria-label="Filter courses">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="search" id="search" placeholder="Search courses…" aria-label="Search courses" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="filter-chips" role="group" aria-label="Filter by category">
+          <button type="button" class="chip" data-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="chip" data-filter="thermal" aria-pressed="false">Thermal</button>
+          <button type="button" class="chip" data-filter="design" aria-pressed="false">Design</button>
+          <button type="button" class="chip" data-filter="mechanics" aria-pressed="false">Mechanics</button>
+          <button type="button" class="chip" data-filter="math" aria-pressed="false">Math &amp; EE</button>
+        </div>
+      </div>
+
+      <div id="no-results" role="status" aria-live="polite">
+        <p>No courses match your search. Try a different keyword or clear the filter.</p>
+      </div>
+
+      <ul class="grid" id="course-grid"></ul>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span class="foot-brand"><svg class="logo" viewBox="0 0 240 240" aria-hidden="true"><use href="#logo-icon"/></svg><span class="fb-text"><strong>MechHub</strong><small>Engineered for Learning</small></span><svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg></span>
+    <span>Built for Better Engineering Learning</span>
+    <span>&copy; <span id="year">2026</span> MechHub</span>
+  </div>
+</footer>
+
+<script>
+/* ====== Central configuration — edit titles, codes, descriptions or URLs here ====== */
+const DRIVE = {
+  title: 'Class Resources &amp; Google Drive',
+  description: 'Access shared class files, lecture materials, and batch resources.',
+  cta: 'Open Class Drive',
+  url: 'https://drive.google.com/drive/folders/1LVn5McTEaALZz_izfzxELduDn-HFU_hd'
+};
+
+/**
+ * COURSES
+ * Each entry must have:
+ *   title       — display name
+ *   code        — course code (empty string → not shown)
+ *   icon        — key into ICONS / ART maps
+ *   category    — one of: thermal | design | mechanics | math (used by filter chips)
+ *   description — short description
+ *   url         — authoritative published URL (opens in new tab)
+ *
+ * Display order below is intentional (most-current semester first).
+ */
+const COURSES = [
+  { title: 'Heat Transfer',               code: '',         icon: 'heat',       category: 'thermal',
+    description: 'Conduction, convection, and radiation in engineering systems.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/Heat-Transfer/' },
+  { title: 'Fluid Mechanics II',          code: '',         icon: 'fluid',      category: 'mechanics',
+    description: 'Advanced fluid behavior, flow analysis, and engineering applications.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/Fluid2/' },
+  { title: 'Mechanical Measurements',     code: '',         icon: 'measure',    category: 'mechanics',
+    description: 'Measurement principles, instruments, and experimental methods.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/measurement/' },
+  { title: 'Basics of Electrical Machines', code: 'PME 302', icon: 'electrical', category: 'math',
+    description: 'Introductory concepts of electrical machines and their applications.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/PME302/' },
+  { title: 'Mechanical Design II',        code: '',         icon: 'design2',    category: 'design',
+    description: 'Further topics in mechanical design and machine component analysis.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/design2/' },
+  { title: 'Engineering Economy',         code: '',         icon: 'economy',    category: 'math',
+    description: 'Cost analysis and economic decision-making for engineering projects.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/economy/' },
+  { title: 'Thermodynamics III',          code: 'THERMO 3', icon: 'thermo',     category: 'thermal',
+    description: 'Advanced thermodynamic principles, cycles, and energy systems.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/tageldien/' },
+  { title: 'Mechanical Design I',         code: 'ME 307',   icon: 'design1',    category: 'design',
+    description: 'Fundamentals of designing machine elements and mechanical components.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/my-website/' },
+  { title: 'Numerical Methods',           code: 'MATH 302', icon: 'numerical',  category: 'math',
+    description: 'Computational techniques for solving engineering mathematics problems.',
+    url: 'https://ahmedramadantajeldin-rgb.github.io/math302/' }
+];
+
+/* ====== Icons (inline SVG paths, 24×24 grid) ====== */
+const ICONS = {
+  drive:    '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  economy:  '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+  thermo:   '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
+  design1:  '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  numerical:'<path d="M18 5H6l6 7-6 7h12"/>',
+  electrical:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  fluid:    '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 15a2.8 2.8 0 0 0 2.5 2"/>',
+  measure:  '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1"/>',
+  heat:     '<path d="M8 3c0 3 3 3 3 6s-3 3-3 6M14 3c0 3 3 3 3 6s-3 3-3 6"/><path d="M5 20h14"/>',
+  design2:  '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>'
+};
+const ART = {
+  economy:  '<rect x="12" y="72" width="16" height="42" fill="currentColor" stroke="none"/><rect x="38" y="54" width="16" height="60" fill="currentColor" stroke="none"/><rect x="64" y="62" width="16" height="52" fill="currentColor" stroke="none"/><rect x="90" y="30" width="16" height="84" fill="currentColor" stroke="none"/><path d="M8 58l32-24 26 10 48-34M100 10h14v14"/>',
+  thermo:   '<path d="M22 92C28 46 62 22 102 32c-4 32-14 58-80 60z"/><path d="M96 24l8 8-10 4M10 40c14-8 14 8 28 0M10 52c14-8 14 8 28 0"/>',
+  design1:  '<circle cx="62" cy="58" r="34" stroke-width="9" stroke-dasharray="7 6"/><circle cx="62" cy="58" r="26"/><circle cx="62" cy="58" r="9"/><path d="M8 112h108M8 106v12M116 106v12"/>',
+  numerical:'<path d="M0 30h120M0 60h120M0 90h120M30 0v120M60 0v120M90 0v120" stroke-width="1"/><path d="M6 100C32 14 62 124 114 22" stroke-width="3"/><circle cx="32" cy="46" r="4" fill="currentColor"/><circle cx="62" cy="70" r="4" fill="currentColor"/><circle cx="90" cy="46" r="4" fill="currentColor"/>',
+  electrical:'<path d="M4 74c0-22 20-22 20 0s20 22 20 0 20-22 20 0 20 22 20 0 20-22 20 0" stroke-width="3"/><path d="M24 50a38 38 0 0 1 72 0M12 38a52 52 0 0 1 96 0"/><path d="M62 86l-9 14h14l-9 14"/>',
+  fluid:    '<path d="M0 34c20-14 40 14 60 0s40-14 60 0M0 62c20-14 40 14 60 0s40-14 60 0M0 90c20-14 40 14 60 0s40-14 60 0" stroke-width="3"/><circle cx="60" cy="62" r="13" fill="currentColor" stroke="none"/>',
+  measure:  '<path d="M18 92a44 44 0 1 1 88 0" stroke-width="3"/><path d="M26 92a36 36 0 1 1 72 0" stroke-width="7" stroke-dasharray="2 7"/><path d="M62 92l24-32" stroke-width="4"/><circle cx="62" cy="92" r="6" fill="currentColor"/>',
+  heat:     '<path d="M26 108c-12-16 12-28 0-44s12-28 0-44M60 108c-12-16 12-28 0-44s12-28 0-44M94 108c-12-16 12-28 0-44s12-28 0-44" stroke-width="3"/>',
+  design2:  '<path d="M60 14l38 22v44L60 102 22 80V36z"/><path d="M22 36l38 22 38-22M60 58v44"/><circle cx="60" cy="58" r="12"/><path d="M60 102v14M30 114h60"/>'
+};
+
+const svg = (paths) =>
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+
+const EXTERNAL = svg('<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>');
+
+/* ====== Render Drive feature card ====== */
+/* Drive opens in new tab; course cards use same-tab navigation (see renderCard below) */
+
+const driveAttrs = 'target="_blank" rel="noopener noreferrer"';
+
+document.getElementById('drive-slot').innerHTML =
+  '<article class="feature">' +
+    '<div class="ico">' + svg(ICONS.drive) + '</div>' +
+    '<div><h2>' + DRIVE.title + '</h2><p>' + DRIVE.description + '</p></div>' +
+    '<a class="btn" href="' + DRIVE.url + '" ' + driveAttrs + ' aria-label="' + DRIVE.cta + ' (opens in a new tab)">' +
+      DRIVE.cta + EXTERNAL +
+    '</a>' +
+  '</article>';
+
+/* ====== Render course cards ====== */
+function renderCard(c) {
+  return '<li data-category="' + c.category + '" data-title="' + c.title.toLowerCase() + '" data-desc="' + c.description.toLowerCase() + '">' +
+    '<article class="card" data-t="' + c.icon + '">' +
+      '<svg class="art" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' + ART[c.icon] + '</svg>' +
+      '<div class="card-top"><div class="ico">' + svg(ICONS[c.icon]) + '</div></div>' +
+      '<div class="card-head"><h3>' + c.title + '</h3>' +
+        (c.code ? '<span class="code">' + c.code + '</span>' : '') + '</div>' +
+      '<p>' + c.description + '</p>' +
+      '<a class="btn" href="' + c.url + '" aria-label="Open Course: ' + c.title + '">Open Course</a>' +
+    '</article>' +
+  '</li>';
+}
+
+const grid = document.getElementById('course-grid');
+grid.innerHTML = COURSES.map(renderCard).join('');
+document.getElementById('stat-courses').textContent = COURSES.length;
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ====== Search & filter ====== */
+(function () {
+  var searchInput  = document.getElementById('search');
+  var chips        = Array.from(document.querySelectorAll('.chip'));
+  var noResults    = document.getElementById('no-results');
+  var items        = Array.from(grid.querySelectorAll('li'));
+  var activeFilter = 'all';
+
+  function applyFilter() {
+    var q = searchInput.value.trim().toLowerCase();
+    var visible = 0;
+    items.forEach(function (li) {
+      var matchCat   = activeFilter === 'all' || li.dataset.category === activeFilter;
+      var matchQuery = !q || li.dataset.title.includes(q) || li.dataset.desc.includes(q);
+      var show = matchCat && matchQuery;
+      li.hidden = !show;
+      if (show) visible++;
+    });
+    noResults.classList.toggle('visible', visible === 0);
+  }
+
+  searchInput.addEventListener('input', applyFilter);
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      activeFilter = chip.dataset.filter;
+      chips.forEach(function (c) { c.setAttribute('aria-pressed', c === chip ? 'true' : 'false'); });
+      applyFilter();
+    });
+  });
+})();
+
+/* ====== Offline detection ====== */
+(function () {
+  function update() {
+    document.body.classList.toggle('offline', !navigator.onLine);
+  }
+  window.addEventListener('online',  update);
+  window.addEventListener('offline', update);
+  update();
+})();
+
+/* ====== PWA: install button + service worker ====== */
+(function () {
+  var btn      = document.getElementById('install-btn');
+  var tip      = document.getElementById('ios-tip');
+  var deferred = null;
+  var standalone = function () {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
+  };
+  var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  /* Manual-install instructions, shown only when the person clicks the button and the browser
+     offers no install prompt (or the prompt was dismissed). Nothing pops up on its own. */
+  if (!isIOS) {
+    tip.innerHTML = 'To install MechHub, open your browser menu and choose <strong>Install MechHub</strong> or <strong>Add to Home screen</strong> ' +
+      '(or <strong>File &rarr; Add to Dock</strong> in Safari on Mac). Not every browser supports installing web apps. ' +
+      'If MechHub is already installed, open it from your app list or home screen.';
+  }
+
+  if (!standalone()) {
+    btn.hidden = false;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferred = e;
+    });
+    btn.addEventListener('click', function () {
+      if (!deferred) { tip.hidden = !tip.hidden; return; }   /* iOS, or no native prompt available */
+      var ev = deferred;
+      deferred = null;                                       /* the prompt event can only be used once */
+      ev.prompt();
+      ev.userChoice.then(function (choice) {
+        if (choice && choice.outcome === 'accepted') { btn.hidden = true; }
+        else { tip.hidden = false; }                         /* dismissed: explain the manual route */
+      }).catch(function () {});
+    });
+  }
+  window.addEventListener('appinstalled', function () {
+    deferred = null;
+    btn.hidden = true;
+    tip.hidden = true;
+  });
+
+  /* Service worker registration + updates */
+  if ('serviceWorker' in navigator) {
+    /* Remember whether a worker already controlled this page. On a first visit the new worker
+       claims the page too, and that must NOT trigger a reload. */
+    var hadController = !!navigator.serviceWorker.controller;
+    var reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController || reloading) return;
+      reloading = true;                    /* a new version took over: reload once so users get fresh files */
+      window.location.reload();
+    });
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .then(function (reg) {
+          /* An installed app can stay open for days; look for a new version when it is shown again (at most hourly). */
+          var lastCheck = Date.now();
+          document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible' && Date.now() - lastCheck > 3600000) {
+              lastCheck = Date.now();
+              reg.update().catch(function () {});
+            }
+          });
+        })
+        .catch(function () { /* SW registration failed silently */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>

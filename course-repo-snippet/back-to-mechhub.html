@@ -1,0 +1,25 @@
+<!-- ============================================================================================
+  "Back to MechHub" link for COURSE repositories.   NOT applied by me: the course repos are separate and were left untouched.
+
+  Behaviour (tested locally with mock same-origin course pages, see report):
+   - opened from MechHub (still on the entry page)  -> history.back(): returns to MechHub with no new history entry, no loop
+   - opened from a bookmark / shared link / search   -> normal link to MechHub (works everywhere, JavaScript or not)
+   - after browsing inside the course                -> normal link to MechHub (never trapped)
+   - Ctrl/Cmd/Shift-click and middle-click keep their normal "open in new tab/window" meaning
+  Without JavaScript it is still a plain working link. Replace nothing else on the page.
+============================================================================================ -->
+<a id="back-to-mechhub" href="https://ahmedramadantajeldin-rgb.github.io/MechLibrary/">&larr; Back to MechHub</a>
+
+<script>
+(function () {
+  var link = document.getElementById('back-to-mechhub');
+  if (!link) return;
+  var HUB = link.href;                                   /* the verified MechHub URL above */
+  link.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+    var fromHub = false;
+    try { fromHub = document.referrer.indexOf(HUB) === 0 && history.length > 1; } catch (_) {}
+    if (fromHub) { e.preventDefault(); history.back(); }
+  });
+})();
+</script>

@@ -1,4 +1,4 @@
-/* MechHub service worker  — v3
+/* MechHub service worker  — v4
  * Cache strategy:
  *   Shell (home page):          network-first with 4 s timeout → cached fallback.
  *   Static assets (icons etc.): stale-while-revalidate (served instantly, refreshed in background).
@@ -8,7 +8,7 @@
  */
 'use strict';
 
-const VERSION = 'v3';   // v3: manifest enhancements + additional icon caching
+const VERSION = 'v4';   // v4: manifest name/screenshots fix (precache a fresh manifest)
 const CACHE   = 'mechhub-' + VERSION;
 const SCOPE   = self.registration.scope;          // e.g. https://user.github.io/MechLibrary/
 const abs     = (p) => new URL(p, SCOPE).href;
