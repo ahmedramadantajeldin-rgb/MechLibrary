@@ -55,11 +55,7 @@ export const formatCairo = (ms) => showFmt.format(new Date(ms));
 /** upcoming: before the official deadline · overdue: deadline passed but the window is still open · past: window closed */
 export function statusOf(s, now) {
   if (now < +s.deadline) return 'upcoming';
-<<<<<<< HEAD
   if (s.closesAt != null && now < +s.closesAt) return 'overdue';
-=======
-  if (now < +s.closesAt) return 'overdue';
->>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
   return 'past';
 }
 
@@ -74,26 +70,15 @@ export function formatDuration(ms) {
 
 /** Wording never claims anything about whether the student submitted. */
 export function timeInfo(s, now) {
-<<<<<<< HEAD
   const status = statusOf(s, now), d = +s.deadline, c = s.closesAt != null ? +s.closesAt : null;
-=======
-  const status = statusOf(s, now), d = +s.deadline, c = +s.closesAt;
->>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
   if (status === 'upcoming') {
     const left = d - now;
     return { status, urgency: left < URGENT_MS ? 'urgent' : left < SOON_MS ? 'soon' : 'normal', label: `${formatDuration(left)} left until the deadline` };
   }
-<<<<<<< HEAD
   if (status === 'overdue' && c != null) {
     return { status, urgency: 'overdue', label: `Deadline passed ${formatDuration(now - d)} ago · window closes in ${formatDuration(c - now)}` };
   }
   return { status, urgency: 'none', label: c != null ? `Closed ${formatDuration(now - c)} ago` : `Closed ${formatDuration(now - d)} ago` };
-=======
-  if (status === 'overdue') {
-    return { status, urgency: 'overdue', label: `Deadline passed ${formatDuration(now - d)} ago · window closes in ${formatDuration(c - now)}` };
-  }
-  return { status, urgency: 'none', label: `Closed ${formatDuration(now - c)} ago` };
->>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
 }
 
 /* ---------- Filtering & sorting ---------- */
@@ -105,7 +90,6 @@ export function subjectsOf(list) {
   return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
-<<<<<<< HEAD
 /** f can be an Array of subjects, or an object { subjects: [...], subject: 'all'|name, type: 'all'|TYPE, status: 'all'|STATUS, sort: 'smart'|... }
  *  Always sorts by nearest upcoming deadline first by default. */
 export function filterAndSort(list, f, now) {
@@ -134,14 +118,6 @@ export function filterAndSort(list, f, now) {
     return true;
   });
 
-=======
-/** f = { subject:'all'|name, type:'all'|TYPE, status:'all'|'upcoming'|'overdue'|'past', sort:'smart'|'deadline-asc'|'deadline-desc'|'subject' } */
-export function filterAndSort(list, f, now) {
-  const out = list.filter((s) =>
-    (f.subject === 'all' || norm(s.subject) === norm(f.subject)) &&
-    (f.type === 'all' || s.type === f.type) &&
-    (f.status === 'all' || statusOf(s, now) === f.status));
->>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
   const rank = { upcoming: 0, overdue: 1, past: 2 };
   const by = {
     'deadline-asc': (a, b) => a.deadline - b.deadline,
@@ -150,17 +126,10 @@ export function filterAndSort(list, f, now) {
     smart: (a, b) => {
       const sa = statusOf(a, now), sb = statusOf(b, now);
       if (sa !== sb) return rank[sa] - rank[sb];
-<<<<<<< HEAD
       return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline;
     }
   };
   return out.sort(by[sortMode] || by.smart);
-=======
-      return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline;   // nearest first; most recent first for past
-    }
-  };
-  return out.sort(by[f.sort] || by.smart);
->>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
 }
 
 /* ---------- Validation ---------- */
@@ -170,12 +139,8 @@ export function isHttpsUrl(u) {
 }
 
 /** form = { subject, type, courseCode, description, deadline:'YYYY-MM-DDTHH:mm', closesAt:'…', attachments:[{title,url,description}], published }
-<<<<<<< HEAD
  *  → { ok, errors:{ field: message }, value } — value holds epoch-ms dates and cleaned attachments.
  *  closing time closesAt is optional. */
-=======
- *  → { ok, errors:{ field: message }, value } — value holds epoch-ms dates and cleaned attachments. */
->>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
 export function validateSubmission(form) {
   const errors = {};
   const subject = String(form.subject || '').trim();
@@ -187,7 +152,6 @@ export function validateSubmission(form) {
   if (courseCode.length > LIMITS.courseCode) errors.courseCode = `Keep the course code under ${LIMITS.courseCode} characters.`;
   if (description.length > LIMITS.description) errors.description = `Keep the description under ${LIMITS.description} characters.`;
 
-<<<<<<< HEAD
   const deadline = parseCairoLocal(form.deadline);
   if (deadline == null) errors.deadline = form.deadline ? 'This time does not exist in Cairo (clocks skip forward). Pick another.' : 'Set the official deadline.';
 
@@ -198,12 +162,6 @@ export function validateSubmission(form) {
   } else if (deadline != null && closesAt != null && closesAt < deadline) {
     errors.closesAt = 'The closing time cannot be earlier than the deadline.';
   }
-=======
-  const deadline = parseCairoLocal(form.deadline), closesAt = parseCairoLocal(form.closesAt);
-  if (deadline == null) errors.deadline = form.deadline ? 'This time does not exist in Cairo (clocks skip forward). Pick another.' : 'Set the official deadline.';
-  if (closesAt == null) errors.closesAt = form.closesAt ? 'This time does not exist in Cairo (clocks skip forward). Pick another.' : 'Set the closing / end time.';
-  if (deadline != null && closesAt != null && closesAt < deadline) errors.closesAt = 'The closing time cannot be earlier than the deadline.';
->>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
 
   const attachments = [];
   (form.attachments || []).forEach((a, i) => {

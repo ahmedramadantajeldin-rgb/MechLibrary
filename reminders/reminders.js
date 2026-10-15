@@ -9,6 +9,19 @@ const ADMIN_HINT = ['ahmedramadantajeldin@gmail.com', 'ahmedyasserr219@gmail.com
 const TICK_MS = 30 * 1000;
 const LS_SETTINGS = 'mechReminders.settings.v1';   // per-device notification preferences (not shared data)
 const LS_FIRED = 'mechReminders.fired.v1';
+const LS_COURSES = 'mechReminders.selectedCourses.v1';
+
+function loadSelectedCourses() {
+  try {
+    const raw = localStorage.getItem(LS_COURSES);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list.map((s) => String(s).trim()).filter(Boolean) : [];
+  } catch (_) { return []; }
+}
+function saveSelectedCourses(courses) {
+  try { localStorage.setItem(LS_COURSES, JSON.stringify(courses)); } catch (_) { /* ignore */ }
+}
 
 const $ = (id) => document.getElementById(id);
 const h = (tag, attrs = {}, ...kids) => {
@@ -29,7 +42,7 @@ const CLOCK_ICON = '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';
 const state = {
   backend: null, user: null, isAdmin: false,
   records: [], loaded: false, unsub: null,
-  filters: { subject: 'all', type: 'all', status: 'all', sort: 'smart' },
+  selectedCourses: loadSelectedCourses(),
   now: Date.now(), sig: '',
   editingId: null, publishId: null, deleteId: null, busy: false,
   settings: loadSettings()
@@ -76,10 +89,12 @@ function onAuth(user) {
 }
 
 /* ================= rendering ================= */
-function renderAll() { renderStats(); renderFilters(); renderList(); renderAdmin(); state.sig = signature(); }
+function renderAll() { renderStats(); renderCourseFilters(); renderList(); renderAdmin(); state.sig = signature(); }
 
 function signature() {
-  return state.records.map((r) => { const t = core.timeInfo(r, state.now); return `${r.id}:${t.status}:${t.urgency}:${r.published}`; }).join('|');
+  const sel = state.selectedCourses.join(',');
+  const recs = state.records.map((r) => { const t = core.timeInfo(r, state.now); return `${r.id}:${t.status}:${t.urgency}:${r.published}:${r.closesAt}`; }).join('|');
+  return `${sel}#${recs}`;
 }
 
 function renderAccount() {
@@ -99,25 +114,72 @@ function renderAccount() {
 
 function renderStats() {
   const c = { upcoming: 0, overdue: 0, past: 0 };
-  published().forEach((r) => { c[core.statusOf(r, state.now)]++; });
+  const items = state.selectedCourses.length
+    ? published().filter((r) => state.selectedCourses.some((s) => s.toLowerCase() === r.subject.toLowerCase()))
+    : [];
+  items.forEach((r) => { c[core.statusOf(r, state.now)]++; });
   const ready = state.loaded;
-  $('stat-upcoming').textContent = ready ? c.upcoming : '–';
-  $('stat-overdue').textContent = ready ? c.overdue : '–';
-  $('stat-past').textContent = ready ? c.past : '–';
+  $('stat-upcoming').textContent = ready ? (state.selectedCourses.length ? c.upcoming : 0) : '–';
+  $('stat-overdue').textContent = ready ? (state.selectedCourses.length ? c.overdue : 0) : '–';
+  $('stat-past').textContent = ready ? (state.selectedCourses.length ? c.past : 0) : '–';
 }
 
-function fillSelect(sel, options, current) {
-  sel.replaceChildren(...options.map(([v, label]) => h('option', { value: v }, label)));
-  sel.value = options.some(([v]) => v === current) ? current : options[0][0];
-}
-function renderFilters() {
+function renderCourseFilters() {
+  const container = $('courses-chips');
+  const countEl = $('courses-count');
+  if (!container) return;
+
   const subjects = core.subjectsOf(published());
-  fillSelect($('flt-subject'), [['all', 'All subjects'], ...subjects.map((s) => [s, s])], state.filters.subject);
-  fillSelect($('flt-type'), [['all', 'All types'], ...core.TYPES.map((t) => [t, t])], state.filters.type);
-  state.filters.subject = $('flt-subject').value;
-  state.filters.type = $('flt-type').value;
-  $('flt-status').value = state.filters.status;
-  $('flt-sort').value = state.filters.sort;
+  const activeCount = subjects.filter((s) => state.selectedCourses.some((sel) => sel.toLowerCase() === s.toLowerCase())).length;
+  if (countEl) {
+    countEl.textContent = `${activeCount} of ${subjects.length} selected`;
+  }
+
+  container.replaceChildren();
+
+  if (!subjects.length) {
+    container.append(h('span', { class: 'hint' }, state.loaded ? 'No courses with published deadlines yet.' : 'Loading courses…'));
+    return;
+  }
+
+  subjects.forEach((subj) => {
+    const isSelected = state.selectedCourses.some((s) => s.toLowerCase() === subj.toLowerCase());
+    const checkbox = h('input', {
+      type: 'checkbox',
+      value: subj,
+      checked: isSelected,
+      'aria-label': subj,
+      onchange: (e) => toggleCourse(subj, e.target.checked)
+    });
+
+    const label = h('label', { class: `course-chip${isSelected ? ' active' : ''}` },
+      checkbox,
+      h('span', {}, subj)
+    );
+
+    container.append(label);
+  });
+}
+
+function toggleCourse(subj, checked) {
+  const cur = state.selectedCourses.filter((s) => s.toLowerCase() !== subj.toLowerCase());
+  if (checked) cur.push(subj);
+  state.selectedCourses = cur;
+  saveSelectedCourses(state.selectedCourses);
+  renderAll();
+}
+
+function selectAllCourses() {
+  const all = core.subjectsOf(published());
+  state.selectedCourses = all.slice();
+  saveSelectedCourses(state.selectedCourses);
+  renderAll();
+}
+
+function clearAllCourses() {
+  state.selectedCourses = [];
+  saveSelectedCourses(state.selectedCourses);
+  renderAll();
 }
 
 const GROUPS = [
@@ -130,13 +192,34 @@ function renderList() {
   const list = $('list'), empty = $('empty');
   list.replaceChildren();
   empty.hidden = true;
-  if (!state.loaded) { list.append(h('p', { class: 'empty', role: 'status' }, 'Loading deadlines…')); return; }
-  const items = core.filterAndSort(published(), state.filters, state.now);
-  if (!items.length) {
-    empty.textContent = published().length ? 'No submissions match these filters.' : 'No deadlines have been published yet.';
+
+  if (!state.loaded) {
+    list.append(h('p', { class: 'empty', role: 'status' }, 'Loading deadlines…'));
+    return;
+  }
+
+  const allPublished = published();
+  if (!allPublished.length) {
+    empty.textContent = 'No deadlines have been published yet.';
     empty.hidden = false;
     return;
   }
+
+  if (!state.selectedCourses.length) {
+    list.append(h('div', { class: 'empty-courses', role: 'region', 'aria-label': 'Select courses prompt' },
+      h('p', {}, h('strong', {}, 'No courses selected.')),
+      h('p', {}, 'Select your courses above to see your upcoming deadlines and reminders.'),
+      h('button', { type: 'button', class: 'btn btn-outline btn-sm', onclick: selectAllCourses }, 'Select all courses')));
+    return;
+  }
+
+  const items = core.filterAndSort(allPublished, state.selectedCourses, state.now);
+  if (!items.length) {
+    empty.textContent = 'No submissions match your selected courses.';
+    empty.hidden = false;
+    return;
+  }
+
   for (const [key, title, note] of GROUPS) {
     const rows = items.filter((r) => core.statusOf(r, state.now) === key);
     if (!rows.length) continue;
@@ -149,14 +232,17 @@ function renderList() {
 
 function renderCard(r) {
   const t = core.timeInfo(r, state.now);
+  const dl = h('dl', { class: 'dates' },
+    h('dt', {}, 'Deadline'), h('dd', {}, core.formatCairo(r.deadline)));
+  if (r.closesAt != null) {
+    dl.append(h('dt', {}, 'Closes'), h('dd', {}, core.formatCairo(r.closesAt)));
+  }
   return h('article', { class: 'sub-card', 'data-id': r.id, 'data-status': t.status, 'data-urgency': t.urgency },
     h('div', { class: 'sub-head' },
       h('h3', {}, r.subject),
       h('span', { class: 'badge type' }, r.type)),
     r.courseCode ? h('p', { class: 'sub-code' }, r.courseCode) : null,
-    h('dl', { class: 'dates' },
-      h('dt', {}, 'Deadline'), h('dd', {}, core.formatCairo(r.deadline)),
-      h('dt', {}, 'Closes'), h('dd', {}, core.formatCairo(r.closesAt))),
+    dl,
     h('p', { class: 'time-pill', 'data-role': 'time' }, svg(CLOCK_ICON), h('span', {}, t.label)),
     r.description ? h('p', { class: 'sub-desc' }, r.description) : null,
     r.attachments.length ? h('ul', { class: 'atts', 'aria-label': 'PDF attachments' }, r.attachments.map(renderAttachment)) : null);
@@ -187,11 +273,12 @@ function renderAdmin() {
   if (!rows.length) ul.append(h('li', { class: 'hint' }, 'No records yet. Use “New submission” to add the first one.'));
   for (const r of rows) {
     const st = { upcoming: 'Upcoming', overdue: 'Deadline passed, still open', past: 'Closed' }[core.statusOf(r, state.now)];
+    const closesPart = r.closesAt != null ? ` · Closes ${core.formatCairo(r.closesAt)}` : '';
     ul.append(h('li', { class: 'admin-row', 'data-id': r.id },
       h('div', {},
         h('div', { class: 'title' }, r.subject, ' ', h('span', { class: 'badge type' }, r.type), ' ',
           h('span', { class: r.published ? 'badge pub' : 'badge draft' }, r.published ? 'Published' : 'Draft')),
-        h('div', { class: 'sub' }, `Deadline ${core.formatCairo(r.deadline)} · Closes ${core.formatCairo(r.closesAt)} · ${r.attachments.length} PDF link${r.attachments.length === 1 ? '' : 's'} · ${st}`)),
+        h('div', { class: 'sub' }, `Deadline ${core.formatCairo(r.deadline)}${closesPart} · ${r.attachments.length} PDF link${r.attachments.length === 1 ? '' : 's'} · ${st}`)),
       h('div', { class: 'admin-actions' },
         h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'edit', onclick: () => openForm(r) }, 'Edit'),
         h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'preview', onclick: () => openPreview(r, {}) }, 'Preview'),
@@ -250,7 +337,7 @@ function openForm(rec) {
   $('f-code').value = rec ? rec.courseCode : '';
   $('f-desc').value = rec ? rec.description : '';
   $('f-deadline').value = rec ? core.toCairoInputValue(rec.deadline) : '';
-  $('f-closes').value = rec ? core.toCairoInputValue(rec.closesAt) : '';
+  $('f-closes').value = rec && rec.closesAt != null ? core.toCairoInputValue(rec.closesAt) : '';
   $('f-published').checked = rec ? rec.published : false;
   $('f-atts').replaceChildren(...(rec && rec.attachments.length ? rec.attachments : [{}]).map(attRow));
   $('form-dialog').showModal();
@@ -394,7 +481,10 @@ async function showNotification(title, body, tag) {
 function checkReminders() {
   if (!notifSupported() || !state.settings.enabled || Notification.permission !== 'granted' || !state.loaded) return;
   const fired = core.pruneFired(loadFired(), state.now);
-  const res = core.dueReminders(published(), state.now, state.settings.leads, fired);
+  const relevant = state.selectedCourses.length
+    ? published().filter((r) => state.selectedCourses.some((s) => s.toLowerCase() === r.subject.toLowerCase()))
+    : published();
+  const res = core.dueReminders(relevant, state.now, state.settings.leads, fired);
   saveFired(res.fired);
   for (const n of res.notify) {
     showNotification(`${n.sub.subject} — ${n.sub.type}`,
@@ -423,11 +513,10 @@ async function init() {
 
   $('board').hidden = false;
   $('f-type').replaceChildren(...typeOptions());
-  const f = state.filters;
-  $('flt-subject').addEventListener('change', (e) => { f.subject = e.target.value; renderList(); });
-  $('flt-type').addEventListener('change', (e) => { f.type = e.target.value; renderList(); });
-  $('flt-status').addEventListener('change', (e) => { f.status = e.target.value; renderList(); });
-  $('flt-sort').addEventListener('change', (e) => { f.sort = e.target.value; renderList(); });
+  const btnSelectAll = $('btn-select-all');
+  if (btnSelectAll) btnSelectAll.addEventListener('click', selectAllCourses);
+  const btnClearAll = $('btn-clear-all');
+  if (btnClearAll) btnClearAll.addEventListener('click', clearAllCourses);
   wireNotifySettings();
 
   $('admin-new').addEventListener('click', () => openForm(null));

@@ -118,9 +118,13 @@ test('validation: every one of the seven types is accepted, others rejected', ()
   for (const t of ['', 'Exam', 'quiz', 'Project']) assert.ok(c.validateSubmission(goodForm({ type: t })).errors.type, t);
 });
 
-test('validation: deadline and closing time are separate and ordered', () => {
-  assert.ok(c.validateSubmission(goodForm({ deadline: '', closesAt: '' })).errors.deadline);
-  assert.ok(c.validateSubmission(goodForm({ deadline: '', closesAt: '' })).errors.closesAt);
+test('validation: deadline and closing time are separate and ordered; closesAt is optional', () => {
+  assert.ok(c.validateSubmission(goodForm({ deadline: '' })).errors.deadline);
+  // closesAt is optional: empty closesAt passes and sets value.closesAt to null
+  const noCloses = c.validateSubmission(goodForm({ closesAt: '' }));
+  assert.equal(noCloses.ok, true);
+  assert.equal(noCloses.value.closesAt, null);
+  // If closesAt is provided, it cannot be earlier than deadline
   assert.ok(c.validateSubmission(goodForm({ closesAt: '2026-11-01T10:00' })).errors.closesAt);        // earlier than deadline
   assert.equal(c.validateSubmission(goodForm({ closesAt: '2026-11-01T23:59' })).ok, true);              // equal is allowed (kept as two values)
   assert.ok(c.validateSubmission(goodForm({ deadline: '2026-04-24T00:30' })).errors.deadline);        // DST gap
@@ -163,3 +167,36 @@ test('pruneFired drops old entries only', () => {
   const out = c.pruneFired({ old: 0, fresh: 100 * D }, 100 * D + H);
   assert.deepEqual(Object.keys(out), ['fresh']);
 });
+
+test('status and timeInfo when closesAt is null or absent', () => {
+  const s = { id: 'no-close', subject: 'Heat Transfer', type: 'Quiz', deadline: 1000 * H, closesAt: null, attachments: [] };
+  assert.equal(c.statusOf(s, 1000 * H - 1), 'upcoming');
+  assert.equal(c.statusOf(s, 1000 * H), 'past'); // immediately past, no overdue window
+  assert.equal(c.statusOf(s, 1000 * H + 10), 'past');
+
+  const before = c.timeInfo(s, 1000 * H - H);
+  assert.equal(before.status, 'upcoming');
+  assert.equal(before.urgency, 'urgent');
+
+  const after = c.timeInfo(s, 1000 * H + H);
+  assert.equal(after.status, 'past');
+  assert.match(after.label, /closed 1h 0m ago/i);
+});
+
+test('filterAndSort supports array of multiple subjects or { subjects: [...] }', () => {
+  const now = 500 * H;
+  const list = [
+    sub({ id: '1', subject: 'Heat Transfer', type: 'Quiz', deadline: 600 * H }),
+    sub({ id: '2', subject: 'Basics Electric Machines', type: 'Midterm', deadline: 700 * H }),
+    sub({ id: '3', subject: 'Design 2', type: 'Assignment', deadline: 800 * H })
+  ];
+  // Array of subjects
+  assert.deepEqual(c.filterAndSort(list, ['Heat Transfer', 'Design 2'], now).map((s) => s.id), ['1', '3']);
+  // Case-insensitive array
+  assert.deepEqual(c.filterAndSort(list, ['basics electric machines'], now).map((s) => s.id), ['2']);
+  // Empty array -> empty result
+  assert.deepEqual(c.filterAndSort(list, [], now), []);
+  // Object with subjects array
+  assert.deepEqual(c.filterAndSort(list, { subjects: ['Design 2'] }, now).map((s) => s.id), ['3']);
+});
+

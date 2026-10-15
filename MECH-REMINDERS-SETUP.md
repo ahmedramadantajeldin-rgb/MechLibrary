@@ -30,10 +30,10 @@ The page works only after you connect a Firebase project. Until then it shows �
 ## How it is built
 
 * **Auth:** Firebase Authentication, Google sign-in (popup). Identity (verified e-mail) comes from Google’s signed token.
-* **Data:** Cloud Firestore, one collection `submissions`. Each record: `subject`, `type` (7 allowed values), `deadline`, `closesAt` (both timestamps, stored in UTC, shown in Cairo time), optional `courseCode` / `description`, `attachments[]` (`title`, `url` https only, optional `description`, max 10), `published`, `createdAt`, `updatedAt`.
+* **Data:** Cloud Firestore, one collection `submissions`. Each record: `subject`, `type` (7 allowed values), `deadline` (timestamp in UTC, shown in Cairo time), optional `closesAt` (closing timestamp, if provided must be >= deadline), optional `courseCode` / `description`, `attachments[]` (`title`, `url` https only, optional `description`, max 10), `published`, `createdAt`, `updatedAt`.
 * **Security:** `firestore.rules`.
   * Anyone may read a record only if `published == true`. Unpublished records are readable by admins only.
-  * Create/update/delete require a **verified** e-mail equal (case-insensitively) to one of the two allowed addresses, and the data must pass the same validation as the form (type list, closes ≥ deadline, https links, field sizes, server timestamps).
+  * Create/update/delete require a **verified** e-mail equal (case-insensitively) to one of the two allowed addresses, and the data must pass the same validation as the form (type list, closes ≥ deadline if present, https links, field sizes, server timestamps).
   * The browser never receives a secret. Hiding buttons is only cosmetic; the rules decide.
 * **Public vs. admin data:** public pages query `published == true` only; admins subscribe to the whole collection.
 * **PWA:** `sw.js`, `manifest.webmanifest` are unchanged. The service worker ignores `reminders/` (it only handles the homepage shell and icons), so the Reminders page and its data are never served from a cache and always load the latest code. Consequence: **the Reminders page needs a connection** (it shows the offline banner).
@@ -56,6 +56,6 @@ The page works only after you connect a Firebase project. Until then it shows �
 
 * PDFs are **links** to existing files; nothing is uploaded or stored.
 * Sign-in uses a pop-up; browsers that block pop-ups show a message. Installed iOS web apps can be awkward with pop-ups — administrators can sign in from the normal browser.
-* “Closing time” must be the same as or later than the “deadline”; both are stored and shown separately.
+* “Closing time” is optional; if provided, it must be the same as or later than the “deadline”.
 * A student’s submission status is unknown to this tool, so it never says “submitted”, “late” or “missed”.
 * No App Check / rate limiting is configured (free-tier quotas apply: Firestore’s free read quota is ample for a class, but a public page can be scripted by anyone — enable App Check later if you ever see abuse).
