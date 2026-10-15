@@ -129,6 +129,7 @@ body.offline #offline-banner{display:flex}
 /* Resources */
 #resources{padding:56px 0 72px}
 .feature{position:relative;display:flex;align-items:center;gap:24px;padding:28px;background:var(--tint);border:1px solid var(--green);border-left:8px solid var(--green);border-radius:14px;box-shadow:var(--shadow-2)}
+#reminders-slot{margin-top:16px}
 .feature:focus-within,.card:focus-within{outline:3px solid var(--green);outline-offset:3px}
 .feature .ico{flex:none;width:68px;height:68px;border-radius:14px;background:var(--ink);color:var(--green-l);display:grid;place-items:center}
 .feature .ico svg{width:36px;height:36px}
@@ -260,6 +261,7 @@ body.offline #offline-banner{display:flex}
   <section id="resources" aria-label="Study resources">
     <div class="wrap">
       <div id="drive-slot"></div>
+      <div id="reminders-slot"></div>
 
       <h2 class="section-title">Explore Your Courses</h2>
 
@@ -348,6 +350,7 @@ const COURSES = [
 
 /* ====== Icons (inline SVG paths, 24×24 grid) ====== */
 const ICONS = {
+  reminders:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   drive:    '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   economy:  '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
   thermo:   '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/>',
@@ -387,6 +390,24 @@ document.getElementById('drive-slot').innerHTML =
     '<div><h2>' + DRIVE.title + '</h2><p>' + DRIVE.description + '</p></div>' +
     '<a class="btn" href="' + DRIVE.url + '" ' + driveAttrs + ' aria-label="' + DRIVE.cta + ' (opens in a new tab)">' +
       DRIVE.cta + EXTERNAL +
+    '</a>' +
+  '</article>';
+
+/* ====== Mech Reminders feature card (visible to everyone; same-tab link to reminders/) ====== */
+const REMINDERS = {
+  title: 'Mech Reminders',
+  description: 'Submission deadlines, reminders, and course attachments.',
+  cta: 'Open Mech Reminders',
+  url: 'reminders/'
+};
+const ARROW = svg('<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>');
+
+document.getElementById('reminders-slot').innerHTML =
+  '<article class="feature">' +
+    '<div class="ico">' + svg(ICONS.reminders) + '</div>' +
+    '<div><h2>' + REMINDERS.title + '</h2><p>' + REMINDERS.description + '</p></div>' +
+    '<a class="btn" href="' + REMINDERS.url + '" aria-label="' + REMINDERS.cta + '">' +
+      REMINDERS.cta + ARROW +
     '</a>' +
   '</article>';
 
