@@ -31,12 +31,20 @@ export async function createBackend(config) {
       published: x.published === true
     };
   };
+<<<<<<< HEAD
   const usable = (r) => r.deadline != null;     // ignore malformed documents without a deadline
   const watch = (q, ok, err) => F.onSnapshot(q, (snap) => ok(snap.docs.map(toRecord).filter(usable)), err);
   const toDoc = (v) => ({
     subject: v.subject, type: v.type, courseCode: v.courseCode, description: v.description,
     deadline: F.Timestamp.fromMillis(v.deadline),
     closesAt: v.closesAt != null ? F.Timestamp.fromMillis(v.closesAt) : null,
+=======
+  const usable = (r) => r.deadline != null && r.closesAt != null;     // ignore malformed documents instead of crashing
+  const watch = (q, ok, err) => F.onSnapshot(q, (snap) => ok(snap.docs.map(toRecord).filter(usable)), err);
+  const toDoc = (v) => ({
+    subject: v.subject, type: v.type, courseCode: v.courseCode, description: v.description,
+    deadline: F.Timestamp.fromMillis(v.deadline), closesAt: F.Timestamp.fromMillis(v.closesAt),
+>>>>>>> 366e725f73194c64e6d2e453fbcd1bee15829fc2
     attachments: v.attachments, published: v.published
   });
 
