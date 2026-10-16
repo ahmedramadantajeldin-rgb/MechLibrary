@@ -55,7 +55,7 @@ export const formatCairo = (ms) => showFmt.format(new Date(ms));
 /** upcoming: before the official deadline · overdue: deadline passed but the window is still open · past: window closed */
 export function statusOf(s, now) {
   if (now < +s.deadline) return 'upcoming';
-  if (s.closesAt != null && now < +s.closesAt) return 'overdue';
+  if (now < +s.closesAt) return 'overdue';
   return 'past';
 }
 
@@ -70,15 +70,15 @@ export function formatDuration(ms) {
 
 /** Wording never claims anything about whether the student submitted. */
 export function timeInfo(s, now) {
-  const status = statusOf(s, now), d = +s.deadline, c = s.closesAt != null ? +s.closesAt : null;
+  const status = statusOf(s, now), d = +s.deadline, c = +s.closesAt;
   if (status === 'upcoming') {
     const left = d - now;
     return { status, urgency: left < URGENT_MS ? 'urgent' : left < SOON_MS ? 'soon' : 'normal', label: `${formatDuration(left)} left until the deadline` };
   }
-  if (status === 'overdue' && c != null) {
+  if (status === 'overdue') {
     return { status, urgency: 'overdue', label: `Deadline passed ${formatDuration(now - d)} ago · window closes in ${formatDuration(c - now)}` };
   }
-  return { status, urgency: 'none', label: c != null ? `Closed ${formatDuration(now - c)} ago` : `Closed ${formatDuration(now - d)} ago` };
+  return { status, urgency: 'none', label: `Closed ${formatDuration(now - c)} ago` };
 }
 
 /* ---------- Filtering & sorting ---------- */
@@ -90,34 +90,12 @@ export function subjectsOf(list) {
   return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
-/** f can be an Array of subjects, or an object { subjects: [...], subject: 'all'|name, type: 'all'|TYPE, status: 'all'|STATUS, sort: 'smart'|... }
- *  Always sorts by nearest upcoming deadline first by default. */
+/** f = { subject:'all'|name, type:'all'|TYPE, status:'all'|'upcoming'|'overdue'|'past', sort:'smart'|'deadline-asc'|'deadline-desc'|'subject' } */
 export function filterAndSort(list, f, now) {
-  let selectedSet = null;
-  let typeFilter = 'all';
-  let statusFilter = 'all';
-  let sortMode = 'smart';
-
-  if (Array.isArray(f)) {
-    selectedSet = new Set(f.map(norm));
-  } else if (f && typeof f === 'object') {
-    if (Array.isArray(f.subjects)) {
-      selectedSet = new Set(f.subjects.map(norm));
-    } else if (typeof f.subject === 'string' && f.subject !== 'all') {
-      selectedSet = new Set([norm(f.subject)]);
-    }
-    if (f.type) typeFilter = f.type;
-    if (f.status) statusFilter = f.status;
-    if (f.sort) sortMode = f.sort;
-  }
-
-  const out = list.filter((s) => {
-    if (selectedSet && !selectedSet.has(norm(s.subject))) return false;
-    if (typeFilter !== 'all' && s.type !== typeFilter) return false;
-    if (statusFilter !== 'all' && statusOf(s, now) !== statusFilter) return false;
-    return true;
-  });
-
+  const out = list.filter((s) =>
+    (f.subject === 'all' || norm(s.subject) === norm(f.subject)) &&
+    (f.type === 'all' || s.type === f.type) &&
+    (f.status === 'all' || statusOf(s, now) === f.status));
   const rank = { upcoming: 0, overdue: 1, past: 2 };
   const by = {
     'deadline-asc': (a, b) => a.deadline - b.deadline,
@@ -126,10 +104,10 @@ export function filterAndSort(list, f, now) {
     smart: (a, b) => {
       const sa = statusOf(a, now), sb = statusOf(b, now);
       if (sa !== sb) return rank[sa] - rank[sb];
-      return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline;
+      return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline;   // nearest first; most recent first for past
     }
   };
-  return out.sort(by[sortMode] || by.smart);
+  return out.sort(by[f.sort] || by.smart);
 }
 
 /* ---------- Validation ---------- */
@@ -139,8 +117,7 @@ export function isHttpsUrl(u) {
 }
 
 /** form = { subject, type, courseCode, description, deadline:'YYYY-MM-DDTHH:mm', closesAt:'…', attachments:[{title,url,description}], published }
- *  → { ok, errors:{ field: message }, value } — value holds epoch-ms dates and cleaned attachments.
- *  closing time closesAt is optional. */
+ *  → { ok, errors:{ field: message }, value } — value holds epoch-ms dates and cleaned attachments. */
 export function validateSubmission(form) {
   const errors = {};
   const subject = String(form.subject || '').trim();
@@ -152,16 +129,10 @@ export function validateSubmission(form) {
   if (courseCode.length > LIMITS.courseCode) errors.courseCode = `Keep the course code under ${LIMITS.courseCode} characters.`;
   if (description.length > LIMITS.description) errors.description = `Keep the description under ${LIMITS.description} characters.`;
 
-  const deadline = parseCairoLocal(form.deadline);
+  const deadline = parseCairoLocal(form.deadline), closesAt = parseCairoLocal(form.closesAt);
   if (deadline == null) errors.deadline = form.deadline ? 'This time does not exist in Cairo (clocks skip forward). Pick another.' : 'Set the official deadline.';
-
-  const rawCloses = String(form.closesAt || '').trim();
-  const closesAt = rawCloses ? parseCairoLocal(rawCloses) : null;
-  if (rawCloses && closesAt == null) {
-    errors.closesAt = 'This time does not exist in Cairo (clocks skip forward). Pick another.';
-  } else if (deadline != null && closesAt != null && closesAt < deadline) {
-    errors.closesAt = 'The closing time cannot be earlier than the deadline.';
-  }
+  if (closesAt == null) errors.closesAt = form.closesAt ? 'This time does not exist in Cairo (clocks skip forward). Pick another.' : 'Set the closing / end time.';
+  if (deadline != null && closesAt != null && closesAt < deadline) errors.closesAt = 'The closing time cannot be earlier than the deadline.';
 
   const attachments = [];
   (form.attachments || []).forEach((a, i) => {

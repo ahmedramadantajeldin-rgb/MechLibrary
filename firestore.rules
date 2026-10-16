@@ -44,13 +44,12 @@ service cloud.firestore {
     function validSubmission(d) {
       return d.keys().hasOnly(['subject', 'type', 'courseCode', 'description', 'deadline', 'closesAt',
                                'attachments', 'published', 'createdAt', 'updatedAt'])
-        && d.keys().hasAll(['subject', 'type', 'deadline', 'attachments', 'published', 'createdAt', 'updatedAt'])
+        && d.keys().hasAll(['subject', 'type', 'deadline', 'closesAt', 'attachments', 'published', 'createdAt', 'updatedAt'])
         && d.subject is string && d.subject.size() > 0 && d.subject.size() <= 120
         && d.type in ['Assignment', 'Quiz', 'Midterm', 'M Assignment', 'M Quiz', 'M Midterm', 'M Project']
         && (!('courseCode' in d) || (d.courseCode is string && d.courseCode.size() <= 40))
         && (!('description' in d) || (d.description is string && d.description.size() <= 1000))
-        && d.deadline is timestamp
-        && (!('closesAt' in d) || d.closesAt == null || (d.closesAt is timestamp && d.closesAt >= d.deadline))
+        && d.deadline is timestamp && d.closesAt is timestamp && d.closesAt >= d.deadline
         && d.published is bool
         && validAttachments(d.attachments)
         && d.updatedAt == request.time;

@@ -77,26 +77,8 @@ main{padding-bottom:56px}
 .account{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;font-size:.92rem;color:var(--steel)}
 .account .who{overflow-wrap:anywhere}
 
-/* Buttons helper */
-.btn-xs{min-height:32px;padding:0 12px;font-size:.82rem;border-radius:6px}
-
-/* Course selector & persistent checkboxes */
-.courses-selector{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-1);padding:18px 20px;display:flex;flex-direction:column;gap:14px}
-.courses-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
-.courses-title-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.courses-title{font-size:1.15rem;font-weight:700;margin:0}
-.courses-count{font-size:.82rem;font-weight:700;color:var(--green-d);background:var(--tint);padding:3px 10px;border-radius:100px;border:1px solid rgba(22,132,71,.25)}
-.courses-actions{display:flex;align-items:center;gap:8px}
-.courses-chips{display:flex;flex-wrap:wrap;gap:8px}
-.course-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1.5px solid var(--line);border-radius:100px;background:var(--paper);font-size:.9rem;font-weight:600;color:var(--ink);cursor:pointer;user-select:none;transition:border-color .15s,background .15s,color .15s}
-.course-chip:hover{border-color:var(--green);background:var(--tint)}
-.course-chip input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);cursor:pointer;margin:0;flex:none}
-.course-chip.active{background:var(--tint);border-color:var(--green);color:var(--green-d);font-weight:700}
-.course-chip:focus-within{outline:2px solid var(--green);outline-offset:2px}
-.empty-courses{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 20px;background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--radius-card);gap:14px;color:var(--steel)}
-.empty-courses p{margin:0;font-size:1rem;max-width:44ch}
-.empty-courses strong{color:var(--ink)}
-
+/* Toolbar */
+.toolbar{display:grid;gap:12px;grid-template-columns:1fr;align-items:end}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .field>label,legend{font-size:.82rem;font-weight:700;color:var(--steel);letter-spacing:.02em}
 select,input[type=text],input[type=url],input[type=datetime-local],textarea{width:100%;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem}
@@ -180,11 +162,13 @@ dialog::backdrop{background:rgba(21,21,21,.6)}
 .preview-note{font-size:.9rem;color:var(--steel)}
 
 @media (min-width:600px){
+  .toolbar{grid-template-columns:repeat(2,1fr)}
   .cards{grid-template-columns:repeat(2,1fr)}
   .form-grid.two{grid-template-columns:1fr 1fr}
   .admin-row{flex-direction:row;align-items:center;justify-content:space-between}
 }
 @media (min-width:980px){
+  .toolbar{grid-template-columns:repeat(4,1fr)}
   .cards{grid-template-columns:repeat(3,1fr)}
 }
 @media (max-width:360px){

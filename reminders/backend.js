@@ -12,13 +12,11 @@ export async function createBackend(config) {
     import(SDK + 'firebase-auth.js'),
     import(SDK + 'firebase-firestore.js')
   ]);
-  const app = getApps().length ? getApp() : initializeApp(config);     // never initialize twice (duplicate-app error)
+  const app = getApps().length ? getApp() : initializeApp(config);     // never initialize the default app twice
   const auth = A.getAuth(app);
   const db = F.getFirestore(app);
   const col = F.collection(db, COLLECTION);
   const ref = (id) => F.doc(db, COLLECTION, id);
-
-  startAnalytics(app, config);                                          // optional; never awaited, never throws
 
   const ms = (t) => (t && typeof t.toMillis === 'function' ? t.toMillis() : null);
   const toRecord = (d) => {
@@ -31,12 +29,11 @@ export async function createBackend(config) {
       published: x.published === true
     };
   };
-  const usable = (r) => r.deadline != null;     // ignore malformed documents without a deadline
+  const usable = (r) => r.deadline != null && r.closesAt != null;     // ignore malformed documents instead of crashing
   const watch = (q, ok, err) => F.onSnapshot(q, (snap) => ok(snap.docs.map(toRecord).filter(usable)), err);
   const toDoc = (v) => ({
     subject: v.subject, type: v.type, courseCode: v.courseCode, description: v.description,
-    deadline: F.Timestamp.fromMillis(v.deadline),
-    closesAt: v.closesAt != null ? F.Timestamp.fromMillis(v.closesAt) : null,
+    deadline: F.Timestamp.fromMillis(v.deadline), closesAt: F.Timestamp.fromMillis(v.closesAt),
     attachments: v.attachments, published: v.published
   });
 
@@ -53,13 +50,4 @@ export async function createBackend(config) {
     setPublished: (id, published) => F.updateDoc(ref(id), { published, updatedAt: F.serverTimestamp() }),
     remove: (id) => F.deleteDoc(ref(id))
   };
-}
-
-/* Analytics is optional: it is loaded in the background, only when the config has a measurementId and the browser
- * supports it. Any failure (blocked by an ad-blocker, offline, unsupported) is swallowed so the reminders page is unaffected. */
-function startAnalytics(app, config) {
-  if (!config.measurementId) return;
-  import(SDK + 'firebase-analytics.js')
-    .then((N) => N.isSupported().then((ok) => { if (ok) N.getAnalytics(app); }))
-    .catch((e) => console.warn('Firebase Analytics is unavailable (reminders are not affected):', e && e.message ? e.message : e));
 }

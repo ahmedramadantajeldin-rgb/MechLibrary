@@ -3,16 +3,21 @@
 Mech Reminders lives at `reminders/` (public URL: `https://ahmedramadantajeldin-rgb.github.io/MechLibrary/reminders/`) and has a card on the MechHub homepage.
 The page works only after you connect a Firebase project. Until then it shows “not connected yet” and no data. **Nothing below has been done for you** — it needs your Google/Firebase account.
 
-## What you must do (about 10 minutes, free “Spark” plan is enough)
+## Status of the Firebase connection
 
-1. **Create a Firebase project** at <https://console.firebase.google.com> → *Add project*. (Google Analytics is not needed.)
-2. **Register a web app**: Project settings → *Your apps* → `</>` Web → give it any nickname. Do **not** tick “Firebase Hosting”. Copy the `firebaseConfig` values it shows.
-3. **Config** — already filled in `reminders/firebase-config.js` for project `mechhub-reminders` (web app `MechHub-Reminders`). These values are public by design; they are not secrets. Keep the file's shape (`FIREBASE_CONFIG` + `isConfigured`): the site has no bundler, so do not replace it with `import … from "firebase/app"` code.
-4. **Enable sign-in**: Build → Authentication → *Get started* → Sign-in method → **Google** → Enable (choose a support email) → Save.
-5. **Authorize the website**: Authentication → Settings → *Authorized domains* → *Add domain* → `ahmedramadantajeldin-rgb.github.io`. (`localhost` is already allowed for local testing.) Without this, sign-in fails with “unauthorized domain”.
-6. **Create the database**: Build → Firestore Database → *Create database* → **Production mode** → pick a region near you.
-7. **Publish the security rules** (this is what actually protects the data): Firestore → *Rules* tab → replace everything with the contents of `firestore.rules` → **Publish**.
-8. **Commit and push** the new/changed files when you are ready (nothing has been pushed for you).
+Already done in the code: `reminders/firebase-config.js` holds the web config of project **mechhub-reminders** (web app *MechHub-Reminders*). Firebase is loaded from Google's CDN (`backend.js`, SDK 10.14.1 — a version that appears in Firebase's official JS release notes; the CDN file itself could not be fetched from the author's offline environment) and the app is initialized only once.
+
+Not integrated on purpose: **Firebase Analytics** (optional; adds third-party tracking to a student page; `measurementId` is stored in the config but unused) and **Firebase Hosting** (the site stays on GitHub Pages).
+
+Do not replace `reminders/firebase-config.js` with an npm-style file that uses `import ... from "firebase/app"`: this site has no bundler, so the browser cannot resolve bare module names and the page would break.
+
+## What you must still do in the Firebase Console (nobody can do this for you)
+
+1. **Authentication → Sign-in method → Google → Enable** (choose a support e-mail) → Save.
+2. **Authentication → Settings → Authorized domains → Add domain:** `ahmedramadantajeldin-rgb.github.io`. A linked Hosting site only authorizes the `firebaseapp.com` / `web.app` domains, not GitHub Pages. Without this, sign-in fails with “unauthorized domain”.
+3. **Firestore Database → Create database** (Production mode, pick a region) if it does not exist yet.
+4. **Firestore → Rules:** replace everything with the contents of `firestore.rules` → **Publish**. (This is what protects the data.)
+5. **Commit and push** the changed files when you approve (nothing has been pushed for you).
 
 ## Verify it (please do these on the live site)
 
@@ -30,10 +35,10 @@ The page works only after you connect a Firebase project. Until then it shows �
 ## How it is built
 
 * **Auth:** Firebase Authentication, Google sign-in (popup). Identity (verified e-mail) comes from Google’s signed token.
-* **Data:** Cloud Firestore, one collection `submissions`. Each record: `subject`, `type` (7 allowed values), `deadline` (timestamp in UTC, shown in Cairo time), optional `closesAt` (closing timestamp, if provided must be >= deadline), optional `courseCode` / `description`, `attachments[]` (`title`, `url` https only, optional `description`, max 10), `published`, `createdAt`, `updatedAt`.
+* **Data:** Cloud Firestore, one collection `submissions`. Each record: `subject`, `type` (7 allowed values), `deadline`, `closesAt` (both timestamps, stored in UTC, shown in Cairo time), optional `courseCode` / `description`, `attachments[]` (`title`, `url` https only, optional `description`, max 10), `published`, `createdAt`, `updatedAt`.
 * **Security:** `firestore.rules`.
   * Anyone may read a record only if `published == true`. Unpublished records are readable by admins only.
-  * Create/update/delete require a **verified** e-mail equal (case-insensitively) to one of the two allowed addresses, and the data must pass the same validation as the form (type list, closes ≥ deadline if present, https links, field sizes, server timestamps).
+  * Create/update/delete require a **verified** e-mail equal (case-insensitively) to one of the two allowed addresses, and the data must pass the same validation as the form (type list, closes ≥ deadline, https links, field sizes, server timestamps).
   * The browser never receives a secret. Hiding buttons is only cosmetic; the rules decide.
 * **Public vs. admin data:** public pages query `published == true` only; admins subscribe to the whole collection.
 * **PWA:** `sw.js`, `manifest.webmanifest` are unchanged. The service worker ignores `reminders/` (it only handles the homepage shell and icons), so the Reminders page and its data are never served from a cache and always load the latest code. Consequence: **the Reminders page needs a connection** (it shows the offline banner).
@@ -48,7 +53,6 @@ The page works only after you connect a Firebase project. Until then it shows �
 
 * **Admins:** edit the list in **both** `firestore.rules` (authoritative; re-publish it) and `ADMIN_HINT` at the top of `reminders/reminders.js` (only decides whether the dashboard is shown).
 * **Time zone:** `TZ` at the top of `reminders/core.js` (default `Africa/Cairo`). Admins type times in this zone regardless of the device zone.
-* **Analytics (optional):** if `measurementId` is present in `firebase-config.js`, `backend.js` loads Firebase Analytics in the background. If it is blocked or fails, only a console warning is logged and the page is unaffected. Delete `measurementId` from the config to turn it off.
 * **Firebase SDK version:** `SDK_VERSION` in `reminders/backend.js` (loaded from Google’s CDN; the exact version was not loadable from the author’s offline environment — if the page reports “Could not load the Firebase library”, check this value against <https://firebase.google.com/support/release-notes/js>).
 * **Card position:** the homepage card sits directly under the Drive card. To show it first, move `<div id="reminders-slot">` above `<div id="drive-slot">` in `index.html` (and move `#reminders-slot{margin-top:16px}` to `#drive-slot`).
 
@@ -56,6 +60,6 @@ The page works only after you connect a Firebase project. Until then it shows �
 
 * PDFs are **links** to existing files; nothing is uploaded or stored.
 * Sign-in uses a pop-up; browsers that block pop-ups show a message. Installed iOS web apps can be awkward with pop-ups — administrators can sign in from the normal browser.
-* “Closing time” is optional; if provided, it must be the same as or later than the “deadline”.
+* “Closing time” must be the same as or later than the “deadline”; both are stored and shown separately.
 * A student’s submission status is unknown to this tool, so it never says “submitted”, “late” or “missed”.
 * No App Check / rate limiting is configured (free-tier quotas apply: Firestore’s free read quota is ample for a class, but a public page can be scripted by anyone — enable App Check later if you ever see abuse).

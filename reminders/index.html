@@ -84,20 +84,25 @@
     </section>
 
     <section id="board" hidden aria-label="Submissions">
-      <div class="courses-selector" id="courses-selector" role="region" aria-labelledby="courses-heading">
-        <div class="courses-header">
-          <div class="courses-title-wrap">
-            <h2 id="courses-heading" class="courses-title">Filter by Course</h2>
-            <span class="courses-count" id="courses-count" aria-live="polite">0 selected</span>
-          </div>
-          <div class="courses-actions">
-            <button type="button" class="btn btn-outline btn-xs" id="btn-select-all">Select all</button>
-            <button type="button" class="btn btn-outline btn-xs" id="btn-clear-all">Clear all</button>
-          </div>
-        </div>
-        <div class="courses-chips" id="courses-chips" role="group" aria-label="Course list"></div>
+      <div class="toolbar" role="group" aria-label="Filter and sort">
+        <div class="field"><label for="flt-subject">Subject</label><select id="flt-subject"></select></div>
+        <div class="field"><label for="flt-type">Submission type</label><select id="flt-type"></select></div>
+        <div class="field"><label for="flt-status">Status</label>
+          <select id="flt-status">
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="overdue">Deadline passed, still open</option>
+            <option value="past">Closed</option>
+          </select></div>
+        <div class="field"><label for="flt-sort">Sort by</label>
+          <select id="flt-sort">
+            <option value="smart">Most urgent first</option>
+            <option value="deadline-asc">Deadline: earliest first</option>
+            <option value="deadline-desc">Deadline: latest first</option>
+            <option value="subject">Subject A–Z</option>
+          </select></div>
       </div>
-      <p class="tz-note" style="margin-top:12px">All times are shown in Cairo time (Africa/Cairo). Reminders are ordered by the nearest upcoming deadline first.</p>
+      <p class="tz-note" style="margin-top:10px">All times are shown in Cairo time (Africa/Cairo). This page shows the official deadline and closing time only — it does not know whether you have submitted.</p>
 
       <details class="panel" id="notify-box" style="margin-top:16px">
         <summary>Reminder settings</summary>
@@ -138,7 +143,7 @@
     </div>
     <div class="form-grid two">
       <div class="field"><label for="f-deadline">Official deadline * (Cairo time)</label><input type="datetime-local" id="f-deadline"><p class="err" id="e-deadline"></p></div>
-      <div class="field"><label for="f-closes">Closing / end time (optional) (Cairo time)</label><input type="datetime-local" id="f-closes"><p class="err" id="e-closesAt"></p></div>
+      <div class="field"><label for="f-closes">Closing / end time * (Cairo time)</label><input type="datetime-local" id="f-closes"><p class="err" id="e-closesAt"></p></div>
     </div>
     <div class="form-grid two">
       <div class="field"><label for="f-code">Course code (optional)</label><input type="text" id="f-code" maxlength="40" autocomplete="off"><p class="err" id="e-courseCode"></p></div>

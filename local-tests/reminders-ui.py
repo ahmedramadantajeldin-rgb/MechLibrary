@@ -16,19 +16,14 @@ CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
 ADMINS = ['ahmedramadantajeldin@gmail.com', 'ahmedyasserr219@gmail.com']
 SDK = 'https://www.gstatic.com/firebasejs/10.14.1/'
 
-PLACEHOLDER_JS = """export const FIREBASE_CONFIG={apiKey:'REPLACE_ME',authDomain:'REPLACE_ME',projectId:'REPLACE_ME',appId:'REPLACE_ME'};
-export const isConfigured=()=>Object.values(FIREBASE_CONFIG).every((v)=>!/REPLACE_ME/.test(v));"""
-
-CONFIG_JS = """export const FIREBASE_CONFIG={apiKey:'test',authDomain:'test.firebaseapp.com',projectId:'test',appId:'test',measurementId:'G-TEST'};
+CONFIG_JS = """export const FIREBASE_CONFIG={apiKey:'test',authDomain:'test.firebaseapp.com',projectId:'test',appId:'test'};
 export const isConfigured=()=>true;"""
 
 STUB = {
- 'firebase-app.js': """const apps=(globalThis.__fbApps=globalThis.__fbApps||[]);
-export const getApps=()=>apps;
-export const getApp=()=>apps[0];
-export const initializeApp=(c)=>{if(apps.length){const e=new Error('duplicate-app');e.code='app/duplicate-app';throw e;}const a={config:c};apps.push(a);return a;};""",
- 'firebase-analytics.js': """export const isSupported=async()=>{ if(globalThis.__analyticsFail) throw new Error('blocked'); return true; };
-export const getAnalytics=()=>{globalThis.__analyticsStarted=(globalThis.__analyticsStarted||0)+1;return {};};""",
+ 'firebase-app.js': """const S=globalThis.__fb;
+export const initializeApp=(c)=>{S.inits++;const a={config:c};S.apps.push(a);return a;};
+export const getApps=()=>S.apps;
+export const getApp=()=>S.apps[0];""",
  'firebase-auth.js': """const S=globalThis.__fb;
 export const getAuth=()=>({});
 export const onAuthStateChanged=(a,cb)=>{S.authCbs.push(cb);setTimeout(()=>cb(S.user),0);return ()=>{};};
@@ -59,7 +54,7 @@ def init_script(user=None, extra=''):
     return """
 (()=>{ const H=3600e3,D=24*H,now=Date.now(); const ts=(ms)=>({__ts:ms,toMillis:()=>ms});
  const mk=(id,o)=>({id,data:Object.assign({courseCode:'',description:'',attachments:[],published:true,createdAt:ts(now),updatedAt:ts(now)},o,{deadline:ts(o.deadline),closesAt:ts(o.closesAt)})});
- globalThis.__fb={admins:%s,user:%s,nextUser:null,authCbs:[],subs:new Set(),writes:[],seq:0,popupError:null,docs:[
+ globalThis.__fb={admins:%s,user:%s,nextUser:null,apps:[],inits:0,authCbs:[],subs:new Set(),writes:[],seq:0,popupError:null,docs:[
   mk('A',{subject:'Heat Transfer',type:'Quiz',deadline:now+5*H,closesAt:now+6*H,description:'Chapters 1-3',attachments:[{title:'Sheet 1',url:'https://example.com/a.pdf',description:'Bring a calculator'},{title:'Bad link',url:'javascript:alert(1)',description:''}]}),
   mk('B',{subject:'Fluid Mechanics II',type:'Assignment',deadline:now+10*D,closesAt:now+10*D+2*H}),
   mk('C',{subject:'Heat Transfer',type:'Midterm',deadline:now-2*H,closesAt:now+5*H}),
@@ -85,12 +80,12 @@ def open_page(browser, path='reminders/', user=None, extra='', configured=True, 
     errors = []
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
     page.on('pageerror', lambda e: errors.append(str(e)))
+    if not configured:   # serve the placeholder config to test the "not connected yet" state
+        page.route('**/reminders/firebase-config.js', lambda r: r.fulfill(body="export const FIREBASE_CONFIG={apiKey:'REPLACE_ME'};export const isConfigured=()=>false;", content_type='text/javascript'))
     if configured:
         page.route('**/reminders/firebase-config.js', lambda r: r.fulfill(body=CONFIG_JS, content_type='text/javascript'))
         for name, body in STUB.items():
             page.route(SDK + name, lambda r, req, b=body: r.fulfill(body=b, content_type='text/javascript'))
-    else:
-        page.route('**/reminders/firebase-config.js', lambda r: r.fulfill(body=PLACEHOLDER_JS, content_type='text/javascript'))
     page.add_init_script(init_script(user, extra))
     page.goto(BASE + path)
     return ctx, page, errors
@@ -116,8 +111,7 @@ def run():
         check('1  homepage: all course URLs are original github.io URLs', len(hrefs) == 9 and all(h.startswith('https://ahmedramadantajeldin-rgb.github.io/') for h in hrefs))
         page.locator('#reminders-slot a.btn').click(); page.wait_for_load_state()
         check('1  homepage: click opens /MechLibrary/reminders/', page.url == BASE + 'reminders/', page.url)
-        # sw.js, icons/ and favicon.ico are not in the uploaded zip, so their 404s are expected in this local copy
-        check('1  homepage: no console errors (ignoring 404s for files absent from the zip)', all('404' in e for e in errs), str(errs))
+        check('1  homepage: no console errors', not errs, str(errs))
         # whole card clickable (stretched link): click on the card body, away from the button
         page.goto(BASE); page.locator('#reminders-slot .feature h2').click(position={'x': 5, 'y': 5}, force=True); page.wait_for_load_state()
         check('1  homepage: clicking the card text also navigates', page.url == BASE + 'reminders/', page.url)
@@ -129,6 +123,13 @@ def run():
         check('2  unconfigured: says not connected, shows no board / admin / fake data',
               'not connected' in page.locator('#status').inner_text().lower() and page.locator('#board').is_hidden() and page.locator('#admin').is_hidden() and cards(page).count() == 0)
         check('2  unconfigured: no console errors', not errs, str(errs)); ctx.close()
+
+        # ---------- 2b. Shipped (real) config file ----------
+        ctx = browser.new_context(); cfg = ctx.request.get(BASE + 'reminders/firebase-config.js').text()
+        check('2b shipped config targets project mechhub-reminders (authDomain, appId)', all(x in cfg for x in ["projectId: 'mechhub-reminders'", "authDomain: 'mechhub-reminders.firebaseapp.com'", "appId: '1:351195022792:web:70969d45b9e8eed61bacfd'"]) and 'REPLACE_ME' not in cfg.split('FIREBASE_CONFIG = {')[1].split('};')[0])
+        page = ctx.new_page(); page.route(SDK + '*', lambda r, req: r.abort()); page.goto(BASE + 'reminders/'); page.wait_for_selector('#status .notice')
+        check('2b real config but Firebase library unreachable → clear error, no board, no crash', 'Could not load the Firebase library' in page.inner_text('#status') and page.locator('#board').is_hidden())
+        ctx.close()
 
         # ---------- 3. Public (anonymous) ----------
         ctx, page, errs = open_page(browser); page.wait_for_selector('#list .sub-card')
@@ -149,6 +150,9 @@ def run():
         check('3  public: PDF link opens in new tab with noopener', link.count() == 1 and link.get_attribute('target') == '_blank' and 'noopener' in link.get_attribute('rel'))
         check('3  public: javascript: link is NOT rendered as a link', a.locator('a[href^="javascript"]').count() == 0 and 'link unavailable' in a.inner_text())
         check('3  public: XSS payload shown as text, not executed', page.evaluate('window.__xss') is None and '<img src=x' in page.locator('.sub-card[data-id=F] h3').inner_text())
+        check('3  Firebase app initialized exactly once', page.evaluate('globalThis.__fb.inits') == 1)
+        again = page.evaluate("""async()=>{const b=await import('./backend.js');const c=await import('./firebase-config.js');await b.createBackend(c.FIREBASE_CONFIG);await b.createBackend(c.FIREBASE_CONFIG);return globalThis.__fb.inits}""")
+        check('3  creating the backend again reuses the app (no duplicate-app error)', again == 1, str(again))
         page.select_option('#flt-subject', 'Heat Transfer')
         check('3  filter by subject', cards(page).count() == 2)
         page.select_option('#flt-type', 'Midterm'); check('3  filter by type', cards(page).count() == 1)
@@ -265,15 +269,6 @@ def run():
         page.evaluate("globalThis.__fb.admins=[]")
         page.locator('#admin-list [data-act=unpublish]').first.click(); page.wait_for_timeout(200)
         check('7  [SIMULATED] server rejects a write → clear error, UI stays usable', 'Not allowed' in page.locator('#status').inner_text()); ctx.close()
-
-        # ---------- 9. Firebase wiring (stubbed SDK) ----------
-        ctx, page, errs = open_page(browser); page.wait_for_selector('#list .sub-card'); page.wait_for_timeout(200)
-        check('9  firebase: app initialized exactly once, no duplicate-app error', page.evaluate('globalThis.__fbApps.length') == 1 and not errs, str(errs))
-        check('9  firebase: optional Analytics started in the background', page.evaluate('globalThis.__analyticsStarted') == 1)
-        ctx.close()
-        ctx, page, errs = open_page(browser, extra='globalThis.__analyticsFail=true;'); page.wait_for_selector('#list .sub-card'); page.wait_for_timeout(200)
-        check('9  firebase: Analytics failure does NOT stop the reminders page (cards still render)', cards(page).count() == 5)
-        check('9  firebase: Analytics failure is only a warning, no page error', not [e for e in errs if 'blocked' in e], str(errs)); ctx.close()
 
         # ---------- 8. Layout ----------
         for name, vp in (('mobile 375', {'width': 375, 'height': 800}), ('tablet 768', {'width': 768, 'height': 1000}), ('desktop 1280', {'width': 1280, 'height': 900})):
