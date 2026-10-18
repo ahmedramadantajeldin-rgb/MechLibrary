@@ -35,7 +35,11 @@ export const signOut=async()=>{S.user=null;S.authCbs.forEach(cb=>cb(null));};"""
 const OWNER='ahmedramadantajeldin@gmail.com';
 const me=()=>S.user&&S.user.emailVerified?S.user.email.toLowerCase():null;
 const isOwner=()=>me()===OWNER;
-const isAdmin=()=>isOwner()||!!(me()&&S.adminDocs[me()]&&S.adminDocs[me()].active===true);
+const isListed=()=>!!(me()&&S.adminDocs[me()]&&S.adminDocs[me()].active===true);
+const isAdmin=()=>isOwner()||isListed();
+const isManager=()=>isListed()&&S.adminDocs[me()].canManageAdmins===true;
+const canMng=()=>isOwner()||isManager();
+const mayChange=(id)=>isOwner()||(isManager()&&id!==me()&&!(S.adminDocs[id]&&S.adminDocs[id].canManageAdmins===true));
 const deny=()=>{const e=new Error('denied');e.code='permission-denied';throw e;};
 export const getFirestore=()=>({});
 export const collection=(db,name)=>({kind:'col',name});
@@ -51,31 +55,31 @@ export const onSnapshot=(q,ok,err)=>{
     const run=()=>{ if(!(isOwner()||(me()&&q.id===me()))){err({code:'permission-denied'});return;} const d=S.adminDocs[q.id]; ok({exists:()=>!!d,data:()=>d}); };
     S.subs.add(run);setTimeout(()=>{if(S.subs.has(run))run();},0);return ()=>S.subs.delete(run);}
   if(q.kind==='col'&&q.name==='admins'){
-    const run=()=>{ if(S.adminListError){err({code:'unavailable'});return;} if(!isOwner()){err({code:'permission-denied'});return;} ok({docs:Object.entries(S.adminDocs).map(([id,d])=>({id,data:()=>d}))}); };
+    const run=()=>{ if(S.adminListError){err({code:'unavailable'});return;} if(!canMng()){err({code:'permission-denied'});return;} ok({docs:Object.entries(S.adminDocs).map(([id,d])=>({id,data:()=>d}))}); };
     S.subs.add(run);setTimeout(()=>{if(S.subs.has(run))run();},0);return ()=>S.subs.delete(run);}
   const t=q.kind==='q'?q:{col:q,w:[]};const pub=t.w.some(c=>c.f==='published'&&c.v===true);
   const run=()=>{ if(!pub&&!isAdmin()){err({code:'permission-denied'});return;} ok({docs:snap(t)}); };
   S.subs.add(run);setTimeout(()=>{if(S.subs.has(run))run();},0);return ()=>S.subs.delete(run);};
 const bump=()=>[...S.subs].forEach(f=>{if(S.subs.has(f))f();});
 S.bump=bump;
-const adminWrite=()=>{ if(!isOwner()||S.denyAdminWrites)deny(); };
-const mkAdmin=(id,o)=>({email:id,active:true,addedBy:me(),createdAt:serverTimestamp(),updatedAt:serverTimestamp(),...o});
+const adminWrite=()=>{ if(!canMng()||S.denyAdminWrites)deny(); };
+const mkAdmin=(id,o,data)=>{ if(data&&data.canManageAdmins===true&&!isOwner())deny(); return {email:id,active:true,addedBy:me(),createdAt:serverTimestamp(),updatedAt:serverTimestamp(),...(data&&data.canManageAdmins===true?{canManageAdmins:true}:{}),...o}; };
 export const addDoc=async(col,data)=>{if(!isAdmin())deny();const id='n'+(++S.seq);S.docs.push({id,data:{...data}});S.writes.push(['add',id]);bump();return {id};};
-export const setDoc=async(ref,data)=>{adminWrite();if(S.adminDocs[ref.id])deny();S.adminDocs[ref.id]=mkAdmin(ref.id,{});S.adminWrites.push(['set',ref.id]);bump();};
+export const setDoc=async(ref,data)=>{adminWrite();if(S.adminDocs[ref.id]||ref.id===OWNER)deny();S.adminDocs[ref.id]=mkAdmin(ref.id,{},data);S.adminWrites.push(['set',ref.id]);bump();};
 export const updateDoc=async(ref,data)=>{
-  if(ref.name==='admins'){adminWrite();const d=S.adminDocs[ref.id];if(!d)deny();for(const [k,v] of Object.entries(data)){if(v&&v.__del)delete d[k];else d[k]=v;}S.adminWrites.push(['update',ref.id,data.active]);bump();return;}
+  if(ref.name==='admins'){adminWrite();const d=S.adminDocs[ref.id];if(!d||!mayChange(ref.id))deny();if('canManageAdmins' in data&&!isOwner())deny();for(const [k,v] of Object.entries(data)){if(v&&v.__del)delete d[k];else d[k]=v;}S.adminWrites.push(['update',ref.id,data.active]);bump();return;}
   if(!isAdmin())deny();const d=S.docs.find(x=>x.id===ref.id);if(!d)deny();Object.assign(d.data,data);S.writes.push(['update',ref.id]);bump();};
 export const deleteDoc=async(ref)=>{
-  if(ref.name==='admins'){adminWrite();delete S.adminDocs[ref.id];S.adminWrites.push(['delete',ref.id]);bump();return;}
+  if(ref.name==='admins'){adminWrite();if(!mayChange(ref.id))deny();delete S.adminDocs[ref.id];S.adminWrites.push(['delete',ref.id]);bump();return;}
   if(!isAdmin())deny();S.docs=S.docs.filter(x=>x.id!==ref.id);S.writes.push(['delete',ref.id]);bump();};
-export const writeBatch=()=>{const ops=[];return {set:(ref,data)=>{ops.push(ref);},commit:async()=>{adminWrite();if(ops.some(r=>S.adminDocs[r.id]))deny();ops.forEach(r=>{S.adminDocs[r.id]=mkAdmin(r.id,{});S.adminWrites.push(['batch-set',r.id]);});bump();}};};""" ,
+export const writeBatch=()=>{const ops=[];return {set:(ref,data)=>{ops.push([ref,data]);},commit:async()=>{adminWrite();if(ops.some(([r])=>S.adminDocs[r.id]))deny();ops.forEach(([r,data])=>{S.adminDocs[r.id]=mkAdmin(r.id,{},data);S.adminWrites.push(['batch-set',r.id]);});bump();}};};""" ,
 }
 
 def init_script(user=None, extra='', admins=None):
     return """
 (()=>{ const H=3600e3,D=24*H,now=Date.now(); const ts=(ms)=>({__ts:ms,toMillis:()=>ms});
  const mk=(id,o)=>({id,data:Object.assign({courseCode:'',description:'',attachments:[],published:true,createdAt:ts(now),updatedAt:ts(now)},o,{deadline:ts(o.deadline),closesAt:ts(o.closesAt)})});
- globalThis.__fb={adminDocs:Object.fromEntries(%s.map(e=>[e,{email:e,active:true,addedBy:'ahmedramadantajeldin@gmail.com',createdAt:ts(now),updatedAt:ts(now)}])),adminWrites:[],user:%s,nextUser:null,apps:[],inits:0,authCbs:[],subs:new Set(),writes:[],seq:0,popupError:null,docs:[
+ globalThis.__fb={adminDocs:Object.fromEntries(%s.map(e=>[e,{email:e,active:true,addedBy:'ahmedramadantajeldin@gmail.com',createdAt:ts(now),updatedAt:ts(now),...(e==='ahmedyasserr219@gmail.com'?{canManageAdmins:true}:{})}])),adminWrites:[],user:%s,nextUser:null,apps:[],inits:0,authCbs:[],subs:new Set(),writes:[],seq:0,popupError:null,docs:[
   mk('A',{subject:'Heat Transfer',type:'Quiz',deadline:now+5*H,closesAt:now+6*H,description:'Chapters 1-3',attachments:[{title:'Sheet 1',url:'https://example.com/a.pdf',description:'Bring a calculator'},{title:'Bad link',url:'javascript:alert(1)',description:''}]}),
   mk('B',{subject:'Fluid Mechanics II',type:'Assignment',deadline:now+10*D,closesAt:now+10*D+2*H}),
   mk('C',{subject:'Heat Transfer',type:'Midterm',deadline:now-2*H,closesAt:now+5*H}),
@@ -86,7 +90,8 @@ def init_script(user=None, extra='', admins=None):
  %s })();""" % (json.dumps(PREVIOUS if admins is None else admins), json.dumps(user), extra)
 
 ADMIN1 = {'email': OWNER, 'emailVerified': True, 'displayName': 'Owner'}                      # the owner is an administrator too
-ADMIN2 = {'email': PREVIOUS[0].upper(), 'emailVerified': True, 'displayName': 'Admin Two'}   # listed in the admins collection; upper-case: matching must be case-insensitive
+ADMIN2 = {'email': PREVIOUS[0].upper(), 'emailVerified': True, 'displayName': 'Ahmed Yasser'}   # a MANAGER (ahmedyasserr219): upper-case, matching must be case-insensitive
+REG = {'email': PREVIOUS[1].upper(), 'emailVerified': True, 'displayName': 'Regular admin'}    # an ordinary administrator
 OTHER = {'email': 'someone.else@gmail.com', 'emailVerified': True, 'displayName': 'Other'}
 UNVERIFIED = {'email': OWNER, 'emailVerified': False, 'displayName': 'Spoof'}
 UNVERIFIED_LISTED = {'email': PREVIOUS[0], 'emailVerified': False, 'displayName': 'Spoof2'}
@@ -343,24 +348,24 @@ def run():
         check('9  owner session: no console errors', not errs, str(errs)); ctx.close()
 
         # a regular administrator
-        ctx, page, errs = open_page(browser, user=ADMIN2); page.wait_for_selector('#admin-list .admin-row')
+        ctx, page, errs = open_page(browser, user=REG); page.wait_for_selector('#admin-list .admin-row')
         check('9  regular admin: dashboard yes, Admin Management no, other administrators never reach the page',
-              page.locator('#admin').is_visible() and page.locator('#owner-panel').is_hidden() and not any(e in page.content() for e in PREVIOUS[1:]))
+              page.locator('#admin').is_visible() and page.locator('#owner-panel').is_hidden() and not any(e in page.content() for e in (PREVIOUS[0], PREVIOUS[2])))
         r = page.evaluate("""async()=>{const F=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');const out=[];
-            for(const f of [()=>F.setDoc(F.doc({},'admins','evil@x.com'),{}),()=>F.deleteDoc(F.doc({},'admins','%s')),()=>F.updateDoc(F.doc({},'admins','%s'),{active:false})]){try{await f();out.push('allowed');}catch(e){out.push(e.code);}}return out;}""" % (PREVIOUS[1], PREVIOUS[1]))
+            for(const f of [()=>F.setDoc(F.doc({},'admins','evil@x.com'),{}),()=>F.deleteDoc(F.doc({},'admins','%s')),()=>F.updateDoc(F.doc({},'admins','%s'),{active:false})]){try{await f();out.push('allowed');}catch(e){out.push(e.code);}}return out;}""" % (PREVIOUS[2], PREVIOUS[2]))
         check('9  [SIMULATED] regular admin: add / delete / revoke straight against the backend are refused', r == ['permission-denied'] * 3, str(r))
         # live revocation in an open session
         page.click('#admin-new'); page.fill('#f-subject', 'half typed')
-        page.evaluate("globalThis.__fb.adminDocs[%s].active=false; globalThis.__fb.bump()" % json.dumps(PREVIOUS[0]))
+        page.evaluate("globalThis.__fb.adminDocs[%s].active=false; globalThis.__fb.bump()" % json.dumps(PREVIOUS[1]))
         page.wait_for_selector('#admin', state='hidden', timeout=3000)
         check('9  LIVE revocation: open dashboard disappears, open form is closed, drafts are gone from the page',
               not page.evaluate("document.getElementById('form-dialog').open") and 'SECRET DRAFT' not in page.content() and 'half typed' not in page.content() and cards(page).count() == 5)
         check('9  LIVE revocation: account bar explains it; no error banner left behind', 'revoked' in page.locator('#account').inner_text() and page.locator('#status .notice.error').count() == 0, page.locator('#account').inner_text())
         page.evaluate("globalThis.__fb.writes.length=0")
-        page.evaluate("globalThis.__fb.adminDocs[%s].active=true; globalThis.__fb.bump()" % json.dumps(PREVIOUS[0]))
+        page.evaluate("globalThis.__fb.adminDocs[%s].active=true; globalThis.__fb.bump()" % json.dumps(PREVIOUS[1]))
         page.wait_for_selector('#admin:not([hidden])', timeout=3000); page.wait_for_selector('#admin-list .admin-row')
         check('9  LIVE restore: dashboard returns without reloading the page', page.locator('#admin-list .admin-row').count() == 6 and 'revoked' not in page.locator('#account').inner_text())
-        page.evaluate("delete globalThis.__fb.adminDocs[%s]; globalThis.__fb.bump()" % json.dumps(PREVIOUS[0]))
+        page.evaluate("delete globalThis.__fb.adminDocs[%s]; globalThis.__fb.bump()" % json.dumps(PREVIOUS[1]))
         page.wait_for_selector('#admin', state='hidden', timeout=3000)
         check('9  LIVE removal: dashboard disappears as well', 'SECRET DRAFT' not in page.content())
         check('9  regular admin session: no console errors', not errs, str(errs)); ctx.close()
@@ -386,9 +391,70 @@ def run():
         # owner write refused by the server / list cannot load
         ctx, page, errs = open_page(browser, user=ADMIN1, extra="globalThis.__fb.denyAdminWrites=true"); page.wait_for_selector('#owner-list [data-email]')
         page.fill('#owner-email', 'x@example.com'); page.click('#owner-add-btn'); page.wait_for_selector('#owner-msg .notice.error')
-        check('9  [SIMULATED] server refuses the add → clear error, no row added', 'Only the owner' in page.inner_text('#owner-msg') and page.locator('#owner-list [data-email="x@example.com"]').count() == 0); ctx.close()
+        check('9  [SIMULATED] server refuses the add → clear error, no row added', 'Only the owner or' in page.inner_text('#owner-msg') and page.locator('#owner-list [data-email="x@example.com"]').count() == 0); ctx.close()
         ctx, page, errs = open_page(browser, user=ADMIN1, extra="globalThis.__fb.adminListError=true"); page.wait_for_selector('#owner-msg .notice.error')
         check('9  list cannot be loaded → error shown, no misleading import banner, owner row still there', page.locator('#owner-import').is_hidden() and page.locator('#owner-list [data-owner]').count() == 1); ctx.close()
+
+        # ---------- 10. Manager: an administrator allowed to manage administrators (ahmedyasserr219) ----------
+        MG = PREVIOUS[0]; REGE = PREVIOUS[1]; REG2 = PREVIOUS[2]
+        ctx, page, errs = open_page(browser, user=ADMIN2); page.wait_for_selector('#owner-list [data-email]')
+        check('10 manager: dashboard AND Admin Management visible, badge "Manager", owner row shown without actions',
+              page.locator('#admin').is_visible() and page.locator('#owner-panel').is_visible() and 'Manager' in page.inner_text('#owner-badge') and page.locator('#owner-list li[data-owner] button').count() == 0)
+        check('10 manager: account bar says so', 'can manage administrators' in page.locator('#account').inner_text())
+        check('10 manager: own entry is locked (no buttons); ordinary admins have Revoke + Remove; nobody gets the owner-only "manager right" button',
+              page.locator(f'#owner-list [data-email="{MG}"] button').count() == 0 and page.locator(f'#owner-list [data-email="{REGE}"] [data-act=revoke]').count() == 1
+              and page.locator(f'#owner-list [data-email="{REGE}"] [data-act=remove]').count() == 1 and page.locator('#owner-list [data-act=toggle-manager]').count() == 0)
+        check('10 manager: never offered the one-time import', page.locator('#owner-import').is_hidden())
+        page.fill('#owner-email', 'Helper@Example.com'); page.click('#owner-add-btn'); page.wait_for_selector('#owner-list [data-email="helper@example.com"]')
+        check('10 manager adds an administrator (row + success message; recorded as added by the manager)',
+              'Administrator added' in page.inner_text('#owner-msg') and page.evaluate("globalThis.__fb.adminDocs['helper@example.com'].addedBy") == MG)
+        row = page.locator('#owner-list [data-email="helper@example.com"]'); row.locator('[data-act=revoke]').click(); page.click('#oc-confirm'); page.wait_for_selector('#owner-confirm-dialog', state='hidden')
+        check('10 manager revokes (with confirmation) an ordinary administrator', row.get_attribute('data-active') == 'false')
+        row.locator('[data-act=restore]').click(); page.wait_for_selector('#owner-list [data-email="helper@example.com"][data-active=true]')
+        row.locator('[data-act=remove]').click(); page.click('#oc-confirm'); page.wait_for_selector('#owner-confirm-dialog', state='hidden')
+        check('10 manager restores and removes an ordinary administrator', row.count() == 0)
+        r = page.evaluate("""async()=>{const F=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');const out=[];
+            const t=async(f)=>{try{await f();out.push('allowed');}catch(e){out.push(e.code);}};
+            await t(()=>F.setDoc(F.doc({},'admins','boss@x.com'),{canManageAdmins:true}));            // create another manager
+            await t(()=>F.updateDoc(F.doc({},'admins','%s'),{canManageAdmins:true}));              // promote an ordinary admin
+            await t(()=>F.updateDoc(F.doc({},'admins','%s'),{active:false}));                        // revoke self
+            await t(()=>F.deleteDoc(F.doc({},'admins','%s')));                                        // remove self
+            await t(()=>F.setDoc(F.doc({},'admins','%s'),{}));                                       // an entry for the owner
+            return out;}""" % (REGE, MG, MG, OWNER))
+        check('10 [SIMULATED] manager straight against the backend: create manager / promote / revoke self / remove self / owner entry → all refused', r == ['permission-denied'] * 5, str(r))
+        page.evaluate("globalThis.__fb.adminDocs[%s].canManageAdmins=false; globalThis.__fb.bump()" % json.dumps(MG))
+        page.wait_for_selector('#owner-panel', state='hidden', timeout=3000)
+        check('10 LIVE: when the owner takes the manager right away, Admin Management disappears but the dashboard stays', page.locator('#admin').is_visible() and page.locator('#owner-list li').count() == 0 and 'can manage administrators' not in page.locator('#account').inner_text())
+        page.evaluate("globalThis.__fb.adminDocs[%s].canManageAdmins=true; globalThis.__fb.bump()" % json.dumps(MG))
+        page.wait_for_selector('#owner-panel:not([hidden])', timeout=3000); page.wait_for_selector('#owner-list [data-email]')
+        check('10 LIVE: when the owner grants it again, Admin Management returns with the list', page.locator('#owner-list [data-email]').count() >= 3)
+        check('10 manager session: no console errors', not errs, str(errs)); ctx.close()
+
+        ctx, page, errs = open_page(browser, user=ADMIN2); page.wait_for_selector('#owner-list [data-email]')
+        page.evaluate("globalThis.__fb.adminDocs[%s].active=false; globalThis.__fb.bump()" % json.dumps(MG))
+        page.wait_for_selector('#admin', state='hidden', timeout=3000)
+        check('10 LIVE: a revoked manager loses dashboard AND Admin Management (list data cleared from the page)', page.locator('#owner-panel').is_hidden() and page.locator('#owner-list li').count() == 0 and REGE not in page.content())
+        ctx.close()
+
+        ctx, page, errs = open_page(browser, user=REG); page.wait_for_selector('#admin-list .admin-row')
+        check('10 ordinary admin: no Admin Management', page.locator('#owner-panel').is_hidden())
+        page.evaluate("globalThis.__fb.adminDocs[%s].canManageAdmins=true; globalThis.__fb.bump()" % json.dumps(REGE))
+        page.wait_for_selector('#owner-panel:not([hidden])', timeout=3000)
+        check('10 LIVE: granted the manager right → Admin Management appears without reload', page.locator('#owner-list [data-email]').count() >= 3); ctx.close()
+
+        # owner: grant / remove the manager right from the page; import marks only the right account
+        ctx, page, errs = open_page(browser, user=ADMIN1); page.wait_for_selector('#owner-list [data-email]')
+        check('10 owner: sees "Manager" on ahmedyasserr only, and a manager-right button on every administrator row',
+              page.locator('#owner-list [data-manager=true]').count() == 1 and page.locator(f'#owner-list [data-email="{MG}"][data-manager=true]').count() == 1 and page.locator('#owner-list [data-act=toggle-manager]').count() == 3)
+        row = page.locator(f'#owner-list [data-email="{REG2}"]'); row.locator('[data-act=toggle-manager]').click(); page.wait_for_selector(f'#owner-list [data-email="{REG2}"][data-manager=true]')
+        check('10 owner grants the manager right (message + badge)', 'Manager right granted' in page.inner_text('#owner-msg') and page.evaluate("globalThis.__fb.adminDocs[%s].canManageAdmins" % json.dumps(REG2)) is True)
+        row.locator('[data-act=toggle-manager]').click(); page.wait_for_selector(f'#owner-list [data-email="{REG2}"][data-manager=false]')
+        check('10 owner removes the manager right again', 'Manager right removed' in page.inner_text('#owner-msg') and page.locator(f'#owner-list [data-email="{MG}"] [data-act=revoke]').count() == 1)
+        ctx.close()
+        ctx, page, errs = open_page(browser, user=ADMIN1, admins=[]); page.wait_for_selector('#owner-import:not([hidden])'); page.click('#owner-import-btn')
+        page.wait_for_function("document.querySelectorAll('#owner-list [data-email]').length===3")
+        docs = page.evaluate("Object.fromEntries(Object.entries(globalThis.__fb.adminDocs).map(([k,v])=>[k,v.canManageAdmins===true]))")
+        check('10 import gives the manager right to ahmedyasserr219 only', docs == {PREVIOUS[0]: True, PREVIOUS[1]: False, PREVIOUS[2]: False}, str(docs)); ctx.close()
 
         # ---------- 8. Layout ----------
         for name, vp in (('mobile 375', {'width': 375, 'height': 800}), ('tablet 768', {'width': 768, 'height': 1000}), ('desktop 1280', {'width': 1280, 'height': 900})):

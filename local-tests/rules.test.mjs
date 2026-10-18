@@ -21,7 +21,7 @@ const { doc, getDoc, getDocs, collection, query, where, setDoc, addDoc, updateDo
 
 const OWNER = 'ahmedramadantajeldin@gmail.com';
 const PREVIOUS = ['ahmedyasserr219@gmail.com', 'mohamed.ibrahim200600@gmail.com', 'ahmedtageldien83@gmail.com'];
-const [ADMIN_A, ADMIN_B, ADMIN_C] = PREVIOUS;
+const [ADMIN_A, ADMIN_B, ADMIN_C] = PREVIOUS;   // ADMIN_A (ahmedyasserr219) is a MANAGER; ADMIN_B and ADMIN_C are ordinary administrators
 const NEWBIE = 'new.admin@example.com';
 const STRANGER = 'someone.else@gmail.com';
 
@@ -36,6 +36,7 @@ const valid = (over = {}) => ({
   published: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...over
 });
 const adminDoc = (email, over = {}) => ({ email, active: true, addedBy: OWNER, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...over });
+const byMgr = (email, over = {}) => adminDoc(email, { addedBy: ADMIN_A, ...over });      // an entry created by the manager
 const db = (email, verified = true) => env.authenticatedContext('u-' + email, { email, email_verified: verified }).firestore();
 const anon = () => env.unauthenticatedContext().firestore();
 const A = (d, email) => doc(d, 'admins/' + email);
@@ -50,7 +51,7 @@ beforeEach(async () => {
     const d = ctx.firestore();
     await setDoc(doc(d, 'submissions/pub'), { ...valid(), createdAt: T(1), updatedAt: T(1) });
     await setDoc(doc(d, 'submissions/draft'), { ...valid({ published: false }), createdAt: T(1), updatedAt: T(1) });
-    for (const e of PREVIOUS) await setDoc(doc(d, 'admins/' + e), { email: e, active: true, addedBy: OWNER, createdAt: T(1), updatedAt: T(1) });   // the migrated administrators
+    for (const e of PREVIOUS) await setDoc(doc(d, 'admins/' + e), { email: e, active: true, addedBy: OWNER, createdAt: T(1), updatedAt: T(1), ...(e === ADMIN_A ? { canManageAdmins: true } : {}) });   // the migrated administrators
   });
 });
 
@@ -149,30 +150,30 @@ test('S2  administrator writes are still validated server-side (unchanged rules)
 
 /* ======================================================================= S3: a regular admin cannot manage admins */
 test('S3  a regular administrator cannot add another administrator or promote anyone', async () => {
-  const a = db(ADMIN_A);
+  const a = db(ADMIN_B);
   await assertFails(setDoc(A(a, NEWBIE), adminDoc(NEWBIE)));
-  await assertFails(setDoc(A(a, NEWBIE), adminDoc(NEWBIE, { addedBy: ADMIN_A })));
+  await assertFails(setDoc(A(a, NEWBIE), adminDoc(NEWBIE, { addedBy: ADMIN_B })));
   const batch = writeBatch(a); batch.set(A(a, NEWBIE), adminDoc(NEWBIE));
   await assertFails(batch.commit());
 });
 
 test('S3  a regular administrator cannot promote or re-enable themselves, nor touch anyone else\'s entry', async () => {
-  const a = db(ADMIN_A);
-  await assertFails(updateDoc(A(a, ADMIN_A), { active: true, updatedAt: serverTimestamp() }));          // even a no-op "promotion"
-  await assertFails(updateDoc(A(a, ADMIN_A), { addedBy: ADMIN_A, updatedAt: serverTimestamp() }));
-  await assertFails(setDoc(A(a, ADMIN_A), adminDoc(ADMIN_A)));
-  await assertFails(updateDoc(A(a, ADMIN_B), { active: false, updatedAt: serverTimestamp(), revokedAt: serverTimestamp(), revokedBy: ADMIN_A }));
+  const a = db(ADMIN_B);
+  await assertFails(updateDoc(A(a, ADMIN_B), { active: true, updatedAt: serverTimestamp() }));          // even a no-op "promotion"
+  await assertFails(updateDoc(A(a, ADMIN_B), { addedBy: ADMIN_B, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(A(a, ADMIN_B), adminDoc(ADMIN_B)));
+  await assertFails(updateDoc(A(a, ADMIN_C), { active: false, updatedAt: serverTimestamp(), revokedAt: serverTimestamp(), revokedBy: ADMIN_B }));
+  await assertFails(deleteDoc(A(a, ADMIN_C)));
   await assertFails(deleteDoc(A(a, ADMIN_B)));
-  await assertFails(deleteDoc(A(a, ADMIN_A)));
   await assertFails(setDoc(A(a, OWNER), adminDoc(OWNER)));                                              // cannot make an "owner" entry
-  await assertFails(setDoc(A(a, OWNER), { email: OWNER, role: 'owner', active: true, addedBy: ADMIN_A, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(A(a, OWNER), { email: OWNER, role: 'owner', active: true, addedBy: ADMIN_B, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
 });
 
 test('S3  a regular administrator cannot list the administrators; they can only read their own entry', async () => {
-  const a = db(ADMIN_A);
+  const a = db(ADMIN_B);
   await assertFails(getDocs(collection(a, 'admins')));
-  await assertFails(getDoc(A(a, ADMIN_B)));
-  await assertSucceeds(getDoc(A(a, ADMIN_A)));                                                          // the site uses this to notice revocation
+  await assertFails(getDoc(A(a, ADMIN_C)));
+  await assertSucceeds(getDoc(A(a, ADMIN_B)));                                                          // the site uses this to notice revocation
 });
 
 test('S3/S6  a stranger cannot create their own entry, and can only read their own (empty) entry', async () => {
@@ -271,7 +272,7 @@ test('S7  published reminders stay publicly readable after any change to the adm
 
 /* ======================================================================= S9: the owner is untouchable */
 test('S9  nobody — not even the owner — can create, change or delete an entry for the owner', async () => {
-  for (const who of [db(OWNER), db(ADMIN_A), db(STRANGER), anon()]) {
+  for (const who of [db(OWNER), db(ADMIN_A), db(ADMIN_B), db(STRANGER), anon()]) {
     await assertFails(setDoc(A(who, OWNER), adminDoc(OWNER)));
     await assertFails(setDoc(A(who, OWNER), adminDoc(OWNER, { active: false, revokedAt: serverTimestamp(), revokedBy: OWNER })));   // "disable the owner"
     await assertFails(deleteDoc(A(who, OWNER)));
@@ -298,7 +299,7 @@ test('S9  the owner keeps full control even when every other administrator has b
 });
 
 test('S9  an administrator cannot lock the owner out or interfere with the list by any route', async () => {
-  const a = db(ADMIN_A);
+  const a = db(ADMIN_B);
   await assertFails(deleteDoc(A(a, OWNER)));
   await assertFails(getDocs(collection(a, 'admins')));
   for (const e of PREVIOUS) await assertFails(deleteDoc(A(a, e)));
@@ -312,4 +313,106 @@ test('every other collection is closed to everybody, including the owner', async
     await assertFails(getDoc(doc(d, 'settings/x')));
     await assertFails(setDoc(doc(d, 'admins/nested@example.com/sub/doc'), { a: 1 }));
   }
+});
+
+/* ======================================================================= MANAGER: an administrator allowed to manage administrators (ahmedyasserr219) */
+test('M1  a manager can add ordinary administrators (and they work at once)', async () => {
+  const m = db(ADMIN_A);
+  await assertSucceeds(setDoc(A(m, NEWBIE), byMgr(NEWBIE)));
+  await assertSucceeds(addDoc(collection(db(NEWBIE), 'submissions'), valid()));
+  const batch = writeBatch(m); for (const e of ['m1@example.com', 'm2@example.com']) batch.set(A(m, e), byMgr(e));
+  await assertSucceeds(batch.commit());
+});
+
+test('M1  a manager\'s entries must name the manager (not the owner) in the audit field, and be well-formed', async () => {
+  const m = db(ADMIN_A);
+  await assertFails(setDoc(A(m, NEWBIE), adminDoc(NEWBIE)));                                            // addedBy: owner → impersonation
+  await assertFails(setDoc(A(m, NEWBIE), byMgr(NEWBIE, { addedBy: ADMIN_B })));
+  await assertFails(setDoc(A(m, NEWBIE), byMgr(NEWBIE, { active: false })));
+  await assertFails(setDoc(A(m, OWNER), byMgr(OWNER)));                                                 // never an entry for the owner
+  await assertFails(setDoc(A(m, NEWBIE), byMgr(NEWBIE, { extra: 1 })));
+});
+
+test('M2  a manager can NOT create another manager; the owner can', async () => {
+  await assertFails(setDoc(A(db(ADMIN_A), NEWBIE), byMgr(NEWBIE, { canManageAdmins: true })));
+  await assertSucceeds(setDoc(A(db(ADMIN_A), NEWBIE), byMgr(NEWBIE, { canManageAdmins: false })));     // an explicit "no" is harmless
+  await assertSucceeds(setDoc(A(db(OWNER), 'boss@example.com'), adminDoc('boss@example.com', { canManageAdmins: true })));
+  await assertFails(setDoc(A(db(OWNER), 'x@example.com'), adminDoc('x@example.com', { canManageAdmins: 'yes' })));
+});
+
+test('M3  a manager can revoke, restore and remove ordinary administrators', async () => {
+  const m = db(ADMIN_A);
+  const mrevoke = (e) => updateDoc(A(m, e), { active: false, updatedAt: serverTimestamp(), revokedAt: serverTimestamp(), revokedBy: ADMIN_A });
+  await assertSucceeds(mrevoke(ADMIN_B));
+  await assertFails(addDoc(collection(db(ADMIN_B), 'submissions'), valid()));                           // takes effect at once
+  await assertFails(updateDoc(A(m, ADMIN_C), { active: false, updatedAt: serverTimestamp(), revokedAt: serverTimestamp(), revokedBy: OWNER }));   // revokedBy must be the manager
+  await assertSucceeds(restore(m, ADMIN_B));
+  await assertSucceeds(addDoc(collection(db(ADMIN_B), 'submissions'), valid()));
+  await assertSucceeds(deleteDoc(A(m, ADMIN_C)));
+  await assertFails(addDoc(collection(db(ADMIN_C), 'submissions'), valid()));
+});
+
+test('M4  a manager can read the list; ordinary administrators cannot', async () => {
+  const all = await assertSucceeds(getDocs(collection(db(ADMIN_A), 'admins')));
+  if (all.docs.length !== 3) throw new Error('manager should see 3 entries, saw ' + all.docs.length);
+  await assertSucceeds(getDoc(A(db(ADMIN_A), ADMIN_B)));
+  await assertFails(getDocs(collection(db(ADMIN_B), 'admins')));
+  await assertFails(getDoc(A(db(ADMIN_B), ADMIN_C)));
+});
+
+test('M5  a manager cannot touch the owner, another manager, or themselves', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'admins/boss@example.com'), { email: 'boss@example.com', active: true, addedBy: OWNER, createdAt: T(1), updatedAt: T(1), canManageAdmins: true }); });
+  const m = db(ADMIN_A);
+  const rv = (e) => ({ active: false, updatedAt: serverTimestamp(), revokedAt: serverTimestamp(), revokedBy: ADMIN_A });
+  await assertFails(updateDoc(A(m, 'boss@example.com'), rv()));                                         // other manager
+  await assertFails(deleteDoc(A(m, 'boss@example.com')));
+  await assertFails(updateDoc(A(m, 'boss@example.com'), { canManageAdmins: false, updatedAt: serverTimestamp() }));
+  await assertFails(updateDoc(A(m, ADMIN_A), rv()));                                                    // self
+  await assertFails(deleteDoc(A(m, ADMIN_A)));
+  await assertFails(deleteDoc(A(m, OWNER)));                                                            // owner
+  await assertFails(setDoc(A(m, OWNER), byMgr(OWNER)));
+  await assertFails(updateDoc(A(m, OWNER), rv()));
+});
+
+test('M6  only the owner can grant or take away the manager right', async () => {
+  const m = db(ADMIN_A);
+  await assertFails(updateDoc(A(m, ADMIN_B), { canManageAdmins: true, updatedAt: serverTimestamp() }));  // grant (to someone else)
+  await assertFails(updateDoc(A(db(ADMIN_B), ADMIN_B), { canManageAdmins: true, updatedAt: serverTimestamp() }));   // self-promotion by an ordinary admin
+  await assertFails(updateDoc(A(m, ADMIN_A), { canManageAdmins: false, updatedAt: serverTimestamp() }));
+  await assertSucceeds(updateDoc(A(db(OWNER), ADMIN_B), { canManageAdmins: true, updatedAt: serverTimestamp() }));
+  await assertSucceeds(addDoc(collection(db(ADMIN_B), 'submissions'), valid()));
+  await assertSucceeds(setDoc(A(db(ADMIN_B), NEWBIE), { ...adminDoc(NEWBIE), addedBy: ADMIN_B }));    // B is a manager now
+  await assertSucceeds(updateDoc(A(db(OWNER), ADMIN_B), { canManageAdmins: false, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(A(db(ADMIN_B), 'again@example.com'), { ...adminDoc('again@example.com'), addedBy: ADMIN_B }));   // and no longer
+  await assertFails(updateDoc(A(db(OWNER), ADMIN_B), { canManageAdmins: 1, updatedAt: serverTimestamp() }));
+});
+
+test('M7  the owner can revoke or remove a manager: all manager powers end at once; reminder rights follow the entry', async () => {
+  const m = db(ADMIN_A), o = db(OWNER);
+  await assertSucceeds(setDoc(A(m, NEWBIE), byMgr(NEWBIE)));
+  await assertSucceeds(revoke(o, ADMIN_A));
+  await assertFails(setDoc(A(m, 'late@example.com'), byMgr('late@example.com')));
+  await assertFails(getDocs(collection(m, 'admins')));
+  await assertFails(deleteDoc(A(m, NEWBIE)));
+  await assertFails(addDoc(collection(m, 'submissions'), valid()));
+  await assertSucceeds(restore(o, ADMIN_A));                                                           // flag is still on the entry
+  await assertSucceeds(setDoc(A(m, 'late@example.com'), byMgr('late@example.com')));
+  await assertSucceeds(deleteDoc(A(o, ADMIN_A)));
+  await assertFails(setDoc(A(m, 'later@example.com'), byMgr('later@example.com')));
+});
+
+test('M8  an UNVERIFIED manager e-mail and a manager flag on an inactive entry give nothing', async () => {
+  await assertFails(setDoc(A(db(ADMIN_A, false), NEWBIE), byMgr(NEWBIE)));
+  await assertFails(getDocs(collection(db(ADMIN_A, false), 'admins')));
+  await revoke(db(OWNER), ADMIN_A);
+  await assertFails(getDocs(collection(db(ADMIN_A), 'admins')));
+});
+
+test('M9  the owner stays untouchable and in charge whatever managers do', async () => {
+  const m = db(ADMIN_A);
+  for (const e of [ADMIN_B, ADMIN_C]) await assertSucceeds(deleteDoc(A(m, e)));
+  await assertSucceeds(setDoc(A(db(OWNER), NEWBIE), adminDoc(NEWBIE)));
+  await assertSucceeds(deleteDoc(A(db(OWNER), ADMIN_A)));
+  await assertSucceeds(getDocs(collection(db(OWNER), 'admins')));
+  await assertFails(deleteDoc(A(m, OWNER)));
 });

@@ -37,6 +37,9 @@ rules_version = '2';
 //   • OWNER  — one fixed Google account (ownerEmail() below). Always an administrator, and the only account that can
 //              add, revoke, restore or remove other administrators. Not stored in the database, so nobody — not even
 //              by editing documents — can remove or disable the owner.
+//   • MANAGER — an ADMIN whose document also has  canManageAdmins == true  (granted by the owner only). A manager can add,
+//              revoke, restore and remove ordinary admins, but can NOT touch the owner, other managers, or themselves,
+//              and can never grant or take away the manager right.
 //   • ADMIN  — a verified Google account whose document  admins/{e-mail}  exists with  active == true.
 //              Admins manage Mech Reminders records but cannot read or change the admin list (except their own document).
 //   • PUBLIC — anyone: may read published records only.
@@ -85,11 +88,21 @@ service cloud.firestore {
       return isOwner() || isListedAdmin();
     }
 
+    // An active administrator that the owner has marked as allowed to manage the list.
+    function isManager() {
+      return isListedAdmin()
+        && get(adminPath(myEmail())).data.get('canManageAdmins', false) == true;
+    }
+
+    function canManageAdmins() {
+      return isOwner() || isManager();
+    }
+
     // ------------------------------------------------------------------ admin list: admins/{e-mail}
     //
     // Document id = the administrator's e-mail address in lower case. Fields:
-    //   email (== id), active (bool), addedBy (owner e-mail), createdAt, updatedAt,
-    //   and — only while active == false — revokedAt, revokedBy.
+    //   email (== id), active (bool), addedBy (who added it), createdAt, updatedAt,
+    //   optional canManageAdmins (bool, owner-only), and — only while active == false — revokedAt, revokedBy.
 
     function validEmail(e) {
       return e is string
@@ -100,41 +113,59 @@ service cloud.firestore {
     }
 
     function validAdminDoc(adminId, d) {
-      return d.keys().hasOnly(['email', 'active', 'addedBy', 'createdAt', 'updatedAt', 'revokedAt', 'revokedBy'])
+      return d.keys().hasOnly(['email', 'active', 'addedBy', 'createdAt', 'updatedAt', 'revokedAt', 'revokedBy', 'canManageAdmins'])
         && d.keys().hasAll(['email', 'active', 'addedBy', 'createdAt', 'updatedAt'])
         && d.email == adminId
         && validEmail(d.email)
         && d.email != ownerEmail()                  // the owner is never an entry in the list
         && d.active is bool
-        && d.addedBy == ownerEmail()
+        && d.addedBy is string
         && d.updatedAt == request.time
+        && (!('canManageAdmins' in d) || d.canManageAdmins is bool)
         && (d.active == true
               ? (!('revokedAt' in d) && !('revokedBy' in d))
-              : (d.revokedAt == request.time && d.revokedBy == ownerEmail()));
+              : (d.revokedAt == request.time && d.revokedBy == myEmail()));
+    }
+
+    // May this request change the existing entry `r`? The owner may change any entry. A manager may change only ordinary
+    // admins: not other managers, not themselves (the owner has no entry at all).
+    function mayChangeEntry(adminId, r) {
+      return isOwner()
+        || (isManager()
+            && adminId != myEmail()
+            && r.get('canManageAdmins', false) == false);
     }
 
     match /admins/{adminId} {
 
-      // The owner reads the whole list. Everyone else can read ONLY their own document
+      // Owner and managers read the whole list. Everyone else can read ONLY their own document
       // (the website uses this to notice immediately when access is granted or revoked).
-      allow get: if isOwner()
+      allow get: if canManageAdmins()
         || (isVerified() && adminId == myEmail());
-      allow list: if isOwner();
+      allow list: if canManageAdmins();
 
-      // Only the owner can add administrators.
-      allow create: if isOwner()
+      // Owner or manager can add administrators. Only the owner can make someone a manager.
+      allow create: if canManageAdmins()
         && validAdminDoc(adminId, request.resource.data)
         && request.resource.data.active == true
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.addedBy == myEmail()      // the audit field names the person who really added it
+        && (isOwner() || request.resource.data.get('canManageAdmins', false) == false);
 
-      // Only the owner can revoke / restore. E-mail, creation time and "added by" can never change.
-      allow update: if isOwner()
+      // Owner or manager can revoke / restore. E-mail, creation time and "added by" can never change, and only the
+      // owner can add or remove the manager right.
+      allow update: if canManageAdmins()
+        && mayChangeEntry(adminId, resource.data)
         && validAdminDoc(adminId, request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.addedBy == resource.data.addedBy;
+        && request.resource.data.addedBy == resource.data.addedBy
+        && (isOwner()
+            || request.resource.data.get('canManageAdmins', false) == resource.data.get('canManageAdmins', false));
 
-      // Only the owner can remove an administrator document (the owner has none, so cannot be removed).
-      allow delete: if isOwner() && adminId != ownerEmail();
+      // Owner or manager can remove an administrator document. The owner has none, so the owner cannot be removed.
+      allow delete: if canManageAdmins()
+        && adminId != ownerEmail()
+        && mayChangeEntry(adminId, resource.data);
     }
 
     // ------------------------------------------------------------------ Mech Reminders records
@@ -276,16 +307,24 @@ service cloud.firestore {
 
 ## إدارة الأدمنز (Admin Management) — جديد
 
-قائمة الأدمنز لم تعد مكتوبة في الكود ولا في القواعد. هي محفوظة في Firestore داخل مجموعة `admins` (مستند لكل إيميل)، ويديرها **المالك فقط** (`ahmedramadantajeldin@gmail.com`) من داخل الموقع.
+قائمة الأدمنز لم تعد مكتوبة في الكود ولا في القواعد. هي محفوظة في Firestore داخل مجموعة `admins` (مستند لكل إيميل).
+
+**من يقدر يدير القائمة؟**
+| الحساب | الصلاحية |
+|---|---|
+| **المالك** `ahmedramadantajeldin@gmail.com` | يضيف ويسحب ويعيد ويحذف أي أدمن، ويمنح أو يسحب صلاحية "إدارة الأدمنز". ثابت داخل القواعد ولا يمكن لأي حساب حذفه أو تعطيله. |
+| **مدير أدمنز (Manager)** — أحمد ياسر `ahmedyasserr219@gmail.com` | يضيف أدمنز جدد، ويسحب ويعيد ويحذف الأدمنز العاديين. **لا** يستطيع لمس المالك ولا مديرًا آخر ولا نفسه، ولا يستطيع منح هذه الصلاحية لأحد. |
+| أدمن عادي | يدير التذكيرات فقط. لا يرى قسم Admin Management. |
 
 **أول مرة بعد نشر القواعد (خطوة واحدة):**
 1. سجّل الدخول بحساب المالك. سيظهر قسم **Admin Management**.
-2. القائمة فارغة في البداية، فسيظهر إطار **Import previous administrators**. اضغط الزر ليُضاف الأدمنز الثلاثة السابقون (`ahmedyasserr219` و`mohamed.ibrahim200600` و`ahmedtageldien83`) دفعة واحدة.
-   - إلى أن تضغط الزر، يعمل المالك فقط. الثلاثة الآخرون لا يستطيعون الكتابة (وهذا سلوك متوقع لأن القائمة فارغة).
+2. القائمة فارغة في البداية، فسيظهر إطار **Import previous administrators**. اضغط الزر ليُضاف الثلاثة السابقون (`ahmedyasserr219` و`mohamed.ibrahim200600` و`ahmedtageldien83`) دفعة واحدة، ويحصل أحمد ياسر تلقائيًا على صلاحية الإدارة.
+   - إلى أن تضغط الزر يعمل المالك فقط (القائمة فارغة).
 
 **بعد ذلك:**
 - **إضافة أدمن:** اكتب الإيميل واضغط **Add admin**. يعمل فورًا بدون تعديل ملفات أو نشر.
-- **سحب الصلاحيات:** زر **Revoke access** (مع تأكيد). الحساب يبقى في القائمة بحالة Revoked ويمكن إعادته بـ **Restore access**.
-- **الحذف:** زر **Remove** (مع تأكيد) يحذف الإيميل من القائمة.
-- المالك ثابت داخل القواعد: لا يمكن حذفه أو تعطيله من أي حساب، حتى لو حُذف كل الأدمنز الآخرين.
-- اكتب الإيميل كما هو بالضبط في حساب Google (Gmail يعتبر النقاط جزءًا من العنوان في هذا النظام).
+- **سحب الصلاحيات:** **Revoke access** (مع تأكيد). يبقى الحساب في القائمة بحالة Revoked ويمكن إعادته بـ **Restore access**.
+- **الحذف:** **Remove** (مع تأكيد).
+- **منح/سحب صلاحية الإدارة (للمالك فقط):** زر **Allow managing admins** / **Remove manager right** بجانب كل أدمن.
+- سحب صلاحيات مدير يوقف قدرته على الإدارة وعلى كتابة التذكيرات فورًا، وتختفي لوحته من صفحته المفتوحة خلال ثوانٍ.
+- اكتب الإيميل كما هو بالضبط في حساب Google.

@@ -17,7 +17,7 @@ Do not replace `reminders/firebase-config.js` with an npm-style file that uses `
 2. **Authentication → Settings → Authorized domains → Add domain:** `ahmedramadantajeldin-rgb.github.io`. A linked Hosting site only authorizes the `firebaseapp.com` / `web.app` domains, not GitHub Pages. Without this, sign-in fails with “unauthorized domain”.
 3. **Firestore Database → Create database** (Production mode, pick a region) if it does not exist yet.
 4. **Firestore → Rules:** replace everything with the contents of `firestore.rules` → **Publish** (or `firebase deploy --only firestore:rules`). (This is what protects the data.)
-4b. **First sign-in as the owner:** click **Import previous administrators** in Admin Management (one time) so the three earlier administrators keep their access.
+4b. **First sign-in as the owner:** click **Import previous administrators** in Admin Management (one time) so the three earlier administrators keep their access (`ahmedyasserr219` is imported as a manager).
 5. **Commit and push** the changed files when you approve (nothing has been pushed for you).
 
 ## Verify it (please do these on the live site)
@@ -53,7 +53,7 @@ Do not replace `reminders/firebase-config.js` with an npm-style file that uses `
 
 ## Things you may want to change
 
-* **Admins:** no code or rules edit is needed any more. The owner (`ahmedramadantajeldin@gmail.com`, fixed in `ownerEmail()` in `firestore.rules` and `OWNER_EMAIL` in `reminders/core.js`) adds, revokes, restores and removes administrators in the **Admin Management** section of the page. The list is stored in Firestore (`admins/{e-mail}`). Changing the owner itself is the only thing that still needs a rules edit + re-publish.
+* **Admins:** no code or rules edit is needed any more. The owner (`ahmedramadantajeldin@gmail.com`, fixed in `ownerEmail()` in `firestore.rules` and `OWNER_EMAIL` in `reminders/core.js`) manages everything in **Admin Management**; the list lives in Firestore (`admins/{e-mail}`). The owner can also give an administrator the **manager right** (`canManageAdmins`): managers (initially `ahmedyasserr219@gmail.com`) can add administrators and revoke / restore / remove *ordinary* ones, but cannot touch the owner, other managers or themselves, and cannot grant the right. Changing the owner itself is the only thing that still needs a rules edit + re-publish.
 * **Time zone:** `TZ` at the top of `reminders/core.js` (default `Africa/Cairo`). Admins type times in this zone regardless of the device zone.
 * **Firebase SDK version:** `SDK_VERSION` in `reminders/backend.js` (loaded from Google’s CDN; the exact version was not loadable from the author’s offline environment — if the page reports “Could not load the Firebase library”, check this value against <https://firebase.google.com/support/release-notes/js>).
 * **Card position:** the homepage card sits directly under the Drive card. To show it first, move `<div id="reminders-slot">` above `<div id="drive-slot">` in `index.html` (and move `#reminders-slot{margin-top:16px}` to `#drive-slot`).

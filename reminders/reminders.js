@@ -28,7 +28,7 @@ const PDF_ICON = '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2
 const CLOCK_ICON = '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';
 
 const state = {
-  backend: null, user: null, isAdmin: false, isOwner: false,
+  backend: null, user: null, isAdmin: false, isOwner: false, isManager: false,   // manager = admin allowed to manage administrators
   adminChecked: false, wasRevoked: false, authGen: 0, unsubSelf: null,         // own access entry (admins/{my e-mail})
   admins: [], adminsLoaded: false, adminsError: false, unsubAdmins: null,       // the whole list (owner only)
   ownerAction: null,
@@ -66,7 +66,7 @@ function startWatching() {
   const err = (e) => {
     if (state.isAdmin && !state.isOwner && /permission-denied/.test(String((e && e.code) || ''))) {
       // The server refused the admin query: this account is no longer an administrator, whatever the page last believed.
-      state.isAdmin = false; state.wasRevoked = true; state.adminChecked = true;
+      state.isAdmin = false; state.isManager = false; stopAdminListWatcher(); state.wasRevoked = true; state.adminChecked = true;
       renderAccount(); startWatching();
       return;
     }
@@ -79,10 +79,15 @@ function startWatching() {
 }
 
 /* ================= who is an administrator ================= */
-function stopAccessWatchers() {
-  if (state.unsubSelf) { state.unsubSelf(); state.unsubSelf = null; }
+const canManage = () => state.isOwner || state.isManager;           // may see / use Admin Management (server re-checks every write)
+
+function stopAdminListWatcher() {
   if (state.unsubAdmins) { state.unsubAdmins(); state.unsubAdmins = null; }
   state.admins = []; state.adminsLoaded = false; state.adminsError = false;
+}
+function stopAccessWatchers() {
+  if (state.unsubSelf) { state.unsubSelf(); state.unsubSelf = null; }
+  stopAdminListWatcher();
 }
 
 function onAuth(user) {
@@ -91,6 +96,7 @@ function onAuth(user) {
   state.user = user;
   const verified = !!user && user.verified;
   state.isOwner = verified && core.normalizeEmail(user.email) === core.normalizeEmail(core.OWNER_EMAIL);
+  state.isManager = false;
   state.isAdmin = state.isOwner;                     // everyone else is NOT an admin until the server-side list says so
   state.adminChecked = !verified || state.isOwner;
   state.wasRevoked = false;
@@ -103,23 +109,27 @@ function onAuth(user) {
 /** Listens to admins/{my e-mail}. The owner changing that document (grant / revoke / remove) reaches an open page within
  *  moments: the page drops its dashboard and falls back to the published-only view. Writes were already refused by the server. */
 function watchOwnAccess(gen) {
-  const apply = (active) => {
+  const apply = (active, manager) => {
     if (gen !== state.authGen) return;
-    const was = state.isAdmin, first = !state.adminChecked;
-    state.adminChecked = true; state.isAdmin = active;
+    const was = state.isAdmin, wasMgr = state.isManager, first = !state.adminChecked;
+    state.adminChecked = true; state.isAdmin = active; state.isManager = active && manager;
     if (was && !active) state.wasRevoked = true;
     if (active) state.wasRevoked = false;
-    if (first || was !== active) renderAccount();
+    if (state.isManager && !wasMgr) watchOwnerList(gen);            // managers need the list to manage it
+    if (!state.isManager && wasMgr) stopAdminListWatcher();
+    if (first || was !== active || wasMgr !== state.isManager) renderAccount();
     if (was !== active) startWatching();            // swap between the published-only and the full (admin) query
+    else if (wasMgr !== state.isManager) renderOwner();
   };
   try {
     state.unsubSelf = state.backend.watchSelfAdmin(state.user.email,
-      (entry) => apply(!!entry && entry.active === true),
-      (e) => { if (/permission-denied/.test(String((e && e.code) || ''))) apply(false); });   // other errors (network): keep what we know
-  } catch (_) { apply(false); }
+      (entry) => apply(!!entry && entry.active === true, !!entry && entry.canManage === true),
+      (e) => { if (/permission-denied/.test(String((e && e.code) || ''))) apply(false, false); });   // other errors (network): keep what we know
+  } catch (_) { apply(false, false); }
 }
 
 function watchOwnerList(gen) {
+  if (state.unsubAdmins) return;
   const stale = () => gen !== state.authGen;
   try {
     state.unsubAdmins = state.backend.watchAdmins(
@@ -145,6 +155,7 @@ function renderAccount() {
     return;
   }
   const role = state.isOwner ? ' — Owner'
+    : state.isManager ? ' — Administrator (can manage administrators)'
     : state.isAdmin ? ' — Administrator'
     : !state.adminChecked ? ''
     : state.wasRevoked ? ' — your administrator access was revoked by the owner.'
@@ -395,7 +406,7 @@ function dismissImport() { try { localStorage.setItem(LS_IMPORT, '1'); } catch (
 
 function explainOwner(e) {
   const c = String((e && (e.code || e.message)) || '');
-  if (/permission-denied/.test(c)) return 'Not allowed. Only the owner account can change administrators. If this is the owner account, sign out and sign in again.';
+  if (/permission-denied/.test(c)) return 'Not allowed. Only the owner or an administrator with the “manage administrators” right can do that, and managers cannot change the owner, other managers or themselves. If you should be allowed, sign out and sign in again.';
   return explain(e);
 }
 
@@ -415,34 +426,54 @@ function clearOwnerDom() {
 
 function renderOwner() {
   const panel = $('owner-panel');
-  panel.hidden = !state.isOwner;
-  if (!state.isOwner) { clearOwnerDom(); return; }
+  panel.hidden = !canManage();
+  if (!canManage()) { clearOwnerDom(); return; }
+  const me = ownerEmail();
+  $('owner-badge').textContent = state.isOwner ? 'Owner only' : 'Manager';
+  $('owner-hint').textContent = state.isOwner
+    ? 'Only you (the owner) and administrators you give the “manage administrators” right can see this section. Everyone you add can manage Mech Reminders records after signing in with that Google account.'
+    : 'You can add administrators and revoke, restore or remove ordinary administrators. You cannot change the owner, other managers or yourself.';
   const ul = $('owner-list');
   ul.replaceChildren(h('li', { class: 'admin-row', 'data-owner': 'true' },
     h('div', {},
       h('div', { class: 'title' }, core.OWNER_EMAIL, ' ', h('span', { class: 'badge owner' }, 'Owner'), ' ', h('span', { class: 'badge pub' }, 'Active')),
-      h('div', { class: 'sub' }, 'Always has full access. It cannot be revoked, removed or changed here.'))));
+      h('div', { class: 'sub' }, 'Always has full access. It cannot be revoked, removed or changed by anyone.'))));
   if (!state.adminsLoaded) ul.append(h('li', { class: 'hint' }, 'Loading administrators…'));
   for (const a of core.sortAdmins(state.admins)) {
     const when = a.active ? (a.createdAt ? `Added ${core.formatCairo(a.createdAt)}` : 'Added just now')
       : (a.revokedAt ? `Access revoked ${core.formatCairo(a.revokedAt)}` : 'Access revoked');
-    ul.append(h('li', { class: `admin-row${a.active ? '' : ' is-revoked'}`, 'data-email': a.email, 'data-active': String(a.active) },
+    const locked = !state.isOwner && (a.canManage || a.email === me);       // managers cannot touch managers or themselves
+    const actions = [];
+    if (!locked) {
+      actions.push(a.active
+        ? h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'revoke', onclick: () => openOwnerConfirm('revoke', a.email) }, 'Revoke access')
+        : h('button', { type: 'button', class: 'btn btn-sm', 'data-act': 'restore', onclick: () => restoreAdmin(a.email) }, 'Restore access'));
+      actions.push(h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'remove', onclick: () => openOwnerConfirm('remove', a.email) }, 'Remove'));
+    }
+    if (state.isOwner) actions.push(h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'toggle-manager', onclick: () => setManager(a.email, !a.canManage) },
+      a.canManage ? 'Remove manager right' : 'Allow managing admins'));
+    ul.append(h('li', { class: `admin-row${a.active ? '' : ' is-revoked'}`, 'data-email': a.email, 'data-active': String(a.active), 'data-manager': String(a.canManage), 'data-locked': String(locked) },
       h('div', {},
-        h('div', { class: 'title' }, a.email, ' ', h('span', { class: a.active ? 'badge pub' : 'badge revoked' }, a.active ? 'Active' : 'Revoked')),
-        h('div', { class: 'sub' }, when)),
-      h('div', { class: 'admin-actions' },
-        a.active
-          ? h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'revoke', onclick: () => openOwnerConfirm('revoke', a.email) }, 'Revoke access')
-          : h('button', { type: 'button', class: 'btn btn-sm', 'data-act': 'restore', onclick: () => restoreAdmin(a.email) }, 'Restore access'),
-        h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'remove', onclick: () => openOwnerConfirm('remove', a.email) }, 'Remove'))));
+        h('div', { class: 'title' }, a.email, ' ', h('span', { class: a.active ? 'badge pub' : 'badge revoked' }, a.active ? 'Active' : 'Revoked'),
+          a.canManage ? [' ', h('span', { class: 'badge owner' }, 'Manager')] : null),
+        h('div', { class: 'sub' }, when + (locked && a.email !== me ? ' · only the owner can change this entry' : ''))),
+      actions.length ? h('div', { class: 'admin-actions' }, actions) : null));
   }
   if (state.adminsLoaded && !state.adminsError && !state.admins.length) ul.append(h('li', { class: 'hint', 'data-role': 'empty' }, 'No other administrators yet. Add an e-mail above.'));
-  $('owner-import').hidden = !(state.adminsLoaded && !state.adminsError && state.admins.length === 0) || importDismissed();
+  $('owner-import').hidden = !(state.isOwner && state.adminsLoaded && !state.adminsError && state.admins.length === 0) || importDismissed();
+}
+
+async function setManager(email, value) {
+  if (!state.isOwner) return;
+  ownerMsg();
+  const done = await guarded(() => state.backend.setManager(email, value), (m) => ownerMsg('error', 'Could not change the manager right.', m), explainOwner);
+  if (done) ownerMsg('info', value ? 'Manager right granted.' : 'Manager right removed.',
+    value ? `${email} can now add administrators and revoke or remove ordinary ones.` : `${email} is now an ordinary administrator.`);
 }
 
 async function addAdmin(ev) {
   ev.preventDefault();
-  if (!state.isOwner) return;
+  if (!canManage()) return;
   const err = $('owner-email-err'); err.textContent = ''; ownerMsg();
   const res = core.checkNewAdminEmail($('owner-email').value, state.admins);
   if (!res.ok) { err.textContent = res.message; $('owner-email').focus(); return; }
@@ -453,12 +484,12 @@ async function addAdmin(ev) {
 async function importPreviousAdmins() {
   if (!state.isOwner) return;
   ownerMsg();
-  const done = await guarded(() => state.backend.addAdmins(core.PREVIOUS_ADMINS, ownerEmail()), (m) => ownerMsg('error', 'Could not import the administrators.', m), explainOwner);
+  const done = await guarded(() => state.backend.addAdmins(core.PREVIOUS_ADMINS.map((email) => ({ email, canManage: core.PREVIOUS_MANAGERS.includes(email) })), ownerEmail()), (m) => ownerMsg('error', 'Could not import the administrators.', m), explainOwner);
   if (done) ownerMsg('info', 'Previous administrators imported.', `${core.PREVIOUS_ADMINS.length} accounts keep their access.`);
 }
 
 async function restoreAdmin(email) {
-  if (!state.isOwner) return;
+  if (!canManage()) return;
   ownerMsg();
   const done = await guarded(() => state.backend.restoreAdmin(email), (m) => ownerMsg('error', 'Could not restore access.', m), explainOwner);
   if (done) ownerMsg('info', 'Access restored.', `${email} can manage Mech Reminders again.`);
@@ -478,7 +509,7 @@ function openOwnerConfirm(kind, email) {
 
 async function confirmOwnerAction() {
   const act = state.ownerAction;
-  if (!act || !state.isOwner) return;
+  if (!act || !canManage()) return;
   const run = act.kind === 'revoke' ? () => state.backend.revokeAdmin(act.email, ownerEmail()) : () => state.backend.removeAdmin(act.email);
   const ok = await guarded(run, (m) => { $('owner-confirm-error').textContent = m; }, explainOwner);
   if (!ok) return;

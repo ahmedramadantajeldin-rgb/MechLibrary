@@ -202,6 +202,8 @@ test('owner constant and the one-time import list are consistent with each other
   assert.equal(c.OWNER_EMAIL, c.OWNER_EMAIL.toLowerCase());
   assert.ok(!c.PREVIOUS_ADMINS.includes(c.OWNER_EMAIL));
   assert.equal(new Set(c.PREVIOUS_ADMINS).size, 3);
+  assert.deepEqual(c.PREVIOUS_MANAGERS, ['ahmedyasserr219@gmail.com']);
+  assert.ok(c.PREVIOUS_MANAGERS.every((e) => c.PREVIOUS_ADMINS.includes(e)));
   assert.ok(c.PREVIOUS_ADMINS.every((e) => c.isValidEmail(e) && e === c.normalizeEmail(e)));
   assert.match(readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8'), new RegExp(`return '${c.OWNER_EMAIL.replace(/\./g, '\\.')}';`));
 });

@@ -40,10 +40,12 @@ export async function createBackend(config) {
   });
   const toAdmin = (d) => {
     const x = d.data();
-    return { email: String(x.email || d.id).toLowerCase(), active: x.active === true, addedBy: x.addedBy || '', createdAt: ms(x.createdAt), revokedAt: ms(x.revokedAt) };
+    return { email: String(x.email || d.id).toLowerCase(), active: x.active === true, canManage: x.canManageAdmins === true, addedBy: x.addedBy || '', createdAt: ms(x.createdAt), revokedAt: ms(x.revokedAt) };
   };
-  const newAdminDoc = (email, ownerEmail) => ({
-    email, active: true, addedBy: ownerEmail, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp()
+  // actor = the e-mail of whoever is adding (owner or manager); the rules require it to match the signed-in account.
+  const newAdminDoc = (email, actor, canManage = false) => ({
+    email, active: true, addedBy: actor, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp(),
+    ...(canManage ? { canManageAdmins: true } : {})                  // only the owner may set this; the rules refuse it from anybody else
   });
 
   return {
@@ -62,19 +64,21 @@ export async function createBackend(config) {
     /* ---- administrator access (document admins/{e-mail}) ----
      * watchSelfAdmin: ANY signed-in account may read ONLY its own admin document; it fires again the moment the
      *   owner grants, revokes or removes access, which is how an open session notices a change right away.
-     * The functions below it are owner-only; firestore.rules rejects them for everyone else. */
+     * The functions below it are for the owner and for managers (admins with canManageAdmins); firestore.rules
+     *   rejects them for everyone else, and only the owner may touch owner / manager entries or the manager right. */
     watchSelfAdmin: (email, ok, err) => F.onSnapshot(adminRef(email),
-      (snap) => ok(snap.exists() ? { active: snap.data().active === true } : null), err),
+      (snap) => ok(snap.exists() ? { active: snap.data().active === true, canManage: snap.data().canManageAdmins === true } : null), err),
 
     watchAdmins: (ok, err) => F.onSnapshot(F.collection(db, ADMINS), (snap) => ok(snap.docs.map(toAdmin)), err),
-    addAdmin: (email, ownerEmail) => F.setDoc(adminRef(email), newAdminDoc(String(email).trim().toLowerCase(), ownerEmail)),
-    addAdmins: (emails, ownerEmail) => {                              // all-or-nothing (used once to import the previous administrators)
+    addAdmin: (email, actor) => F.setDoc(adminRef(email), newAdminDoc(String(email).trim().toLowerCase(), actor)),
+    addAdmins: (entries, actor) => {                                  // all-or-nothing (owner, once: import the previous administrators)
       const batch = F.writeBatch(db);
-      for (const e of emails) { const id = String(e).trim().toLowerCase(); batch.set(adminRef(id), newAdminDoc(id, ownerEmail)); }
+      for (const { email, canManage } of entries) { const id = String(email).trim().toLowerCase(); batch.set(adminRef(id), newAdminDoc(id, actor, canManage === true)); }
       return batch.commit();
     },
-    revokeAdmin: (email, ownerEmail) => F.updateDoc(adminRef(email),
-      { active: false, updatedAt: F.serverTimestamp(), revokedAt: F.serverTimestamp(), revokedBy: ownerEmail }),
+    setManager: (email, value) => F.updateDoc(adminRef(email), { canManageAdmins: value === true, updatedAt: F.serverTimestamp() }),   // owner only
+    revokeAdmin: (email, actor) => F.updateDoc(adminRef(email),
+      { active: false, updatedAt: F.serverTimestamp(), revokedAt: F.serverTimestamp(), revokedBy: actor }),
     restoreAdmin: (email) => F.updateDoc(adminRef(email),
       { active: true, updatedAt: F.serverTimestamp(), revokedAt: F.deleteField(), revokedBy: F.deleteField() }),
     removeAdmin: (email) => F.deleteDoc(adminRef(email))

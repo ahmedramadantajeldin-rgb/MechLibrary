@@ -165,6 +165,8 @@ export const OWNER_EMAIL = 'ahmedramadantajeldin@gmail.com';
 /** One-time import helper for the owner panel: the administrators that existed before the list moved into Firestore.
  *  NEVER used to authorize anything — it only pre-fills documents in the admin list the first time the owner clicks the import button. */
 export const PREVIOUS_ADMINS = ['ahmedyasserr219@gmail.com', 'mohamed.ibrahim200600@gmail.com', 'ahmedtageldien83@gmail.com'];
+/** Of those, the ones imported WITH the right to manage administrators (add / revoke / remove ordinary admins). Owner-granted; changeable later in Admin Management. */
+export const PREVIOUS_MANAGERS = ['ahmedyasserr219@gmail.com'];
 
 export const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
 
