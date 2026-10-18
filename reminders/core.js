@@ -158,6 +158,38 @@ export function validateSubmission(form) {
   };
 }
 
+/* ---------- Administrator management (owner only) ---------- */
+/** The one fixed owner. UI HINT ONLY — it decides what the page shows. The real gate is ownerEmail() in firestore.rules. */
+export const OWNER_EMAIL = 'ahmedramadantajeldin@gmail.com';
+
+/** One-time import helper for the owner panel: the administrators that existed before the list moved into Firestore.
+ *  NEVER used to authorize anything — it only pre-fills documents in the admin list the first time the owner clicks the import button. */
+export const PREVIOUS_ADMINS = ['ahmedyasserr219@gmail.com', 'mohamed.ibrahim200600@gmail.com', 'ahmedtageldien83@gmail.com'];
+
+export const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
+
+/** Same shape as the rule in firestore.rules: "name", one "at" sign, "host.tld"; no spaces, no extra at-signs or slashes, at most 254 characters. */
+export function isValidEmail(e) {
+  const v = normalizeEmail(e);
+  return v.length >= 5 && v.length <= 254 && /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(v);
+}
+
+/** Checks a typed e-mail against the current list. admins = [{ email, active }].
+ *  → { ok:true, email } or { ok:false, code:'invalid'|'owner'|'exists'|'revoked', message, email? } */
+export function checkNewAdminEmail(input, admins) {
+  const email = normalizeEmail(input);
+  if (!email) return { ok: false, code: 'invalid', message: 'Enter an e-mail address.' };
+  if (!isValidEmail(email)) return { ok: false, code: 'invalid', message: 'That does not look like a valid e-mail address.' };
+  if (email === normalizeEmail(OWNER_EMAIL)) return { ok: false, code: 'owner', message: 'This is the owner account. It always has full access and is not part of the list.' };
+  const hit = (admins || []).find((a) => normalizeEmail(a.email) === email);
+  if (hit && hit.active) return { ok: false, code: 'exists', email, message: `${email} is already an administrator.` };
+  if (hit) return { ok: false, code: 'revoked', email, message: `${email} was revoked earlier. Use “Restore access” on that row instead.` };
+  return { ok: true, email };
+}
+
+/** Admins sorted: active first, then by e-mail. */
+export const sortAdmins = (list) => [...list].sort((a, b) => (b.active - a.active) || a.email.localeCompare(b.email));
+
 /* ---------- Browser-notification scheduling (used only while the page is open) ---------- */
 /** For each upcoming record, find reminder lead-times already crossed. Emit ONE notification (for the tightest
  *  crossed lead) and mark every crossed lead as fired, so opening the page late never produces a burst. */

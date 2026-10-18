@@ -72,15 +72,44 @@
 
     <div id="status" role="status" aria-live="polite"></div>
 
-    <div class="account" id="account" hidden></div>
+    <div class="account" id="account" aria-live="polite" hidden></div>
 
     <section class="admin" id="admin" aria-labelledby="admin-title" hidden>
       <div class="admin-head">
         <h2 id="admin-title">Manage submissions</h2>
         <button type="button" class="btn" id="admin-new">+ New submission</button>
       </div>
-      <p class="hint">Visible only to the two authorized administrators. Students see published records only.</p>
+      <p class="hint">Visible only to authorized administrators. Students see published records only.</p>
       <ul class="admin-list" id="admin-list"></ul>
+    </section>
+
+    <section class="admin owner-panel" id="owner-panel" aria-labelledby="owner-title" hidden>
+      <div class="admin-head">
+        <h2 id="owner-title">Admin Management</h2>
+        <span class="badge pub">Owner only</span>
+      </div>
+      <p class="hint">Only the owner account sees this section. Anyone you add can manage Mech Reminders records after signing in with that Google account; they cannot add or remove other administrators.</p>
+      <div id="owner-msg" role="status" aria-live="polite"></div>
+
+      <div class="notice info" id="owner-import" hidden>
+        <div>
+          <strong>Import the previous administrators</strong>
+          The administrator list is empty. Add the three accounts that had access before the list moved into the database, so nobody loses access.
+          <div class="admin-actions" style="margin-top:10px"><button type="button" class="btn btn-sm" id="owner-import-btn">Import previous administrators</button><button type="button" class="btn btn-outline btn-sm" id="owner-import-dismiss">Not now</button></div>
+        </div>
+      </div>
+
+      <form class="owner-add" id="owner-form" novalidate>
+        <div class="field">
+          <label for="owner-email">Google account e-mail</label>
+          <input type="email" id="owner-email" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" placeholder="name@gmail.com" maxlength="254">
+          <p class="err" id="owner-email-err"></p>
+        </div>
+        <button type="submit" class="btn" id="owner-add-btn">Add admin</button>
+      </form>
+      <p class="hint">Use the exact e-mail shown on the person’s Google account. They must sign in with it (verified Google sign-in) to get access.</p>
+
+      <ul class="admin-list" id="owner-list" aria-label="Authorized administrators"></ul>
     </section>
 
     <section id="board" hidden aria-label="Submissions">
@@ -188,6 +217,19 @@
     <div class="dlg-actions">
       <button type="button" class="btn btn-outline" id="c-cancel">Cancel</button>
       <button type="button" class="btn btn-danger" id="c-delete">Delete permanently</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Administrator revoke / remove confirmation (owner only) -->
+<dialog id="owner-confirm-dialog" aria-labelledby="owner-confirm-title">
+  <div class="dlg">
+    <h2 id="owner-confirm-title">Revoke access?</h2>
+    <p id="owner-confirm-text"></p>
+    <div class="dlg-error" id="owner-confirm-error" role="alert"></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-outline" id="oc-cancel">Cancel</button>
+      <button type="button" class="btn btn-danger" id="oc-confirm">Revoke access</button>
     </div>
   </div>
 </dialog>

@@ -16,7 +16,8 @@ Do not replace `reminders/firebase-config.js` with an npm-style file that uses `
 1. **Authentication → Sign-in method → Google → Enable** (choose a support e-mail) → Save.
 2. **Authentication → Settings → Authorized domains → Add domain:** `ahmedramadantajeldin-rgb.github.io`. A linked Hosting site only authorizes the `firebaseapp.com` / `web.app` domains, not GitHub Pages. Without this, sign-in fails with “unauthorized domain”.
 3. **Firestore Database → Create database** (Production mode, pick a region) if it does not exist yet.
-4. **Firestore → Rules:** replace everything with the contents of `firestore.rules` → **Publish**. (This is what protects the data.)
+4. **Firestore → Rules:** replace everything with the contents of `firestore.rules` → **Publish** (or `firebase deploy --only firestore:rules`). (This is what protects the data.)
+4b. **First sign-in as the owner:** click **Import previous administrators** in Admin Management (one time) so the three earlier administrators keep their access.
 5. **Commit and push** the changed files when you approve (nothing has been pushed for you).
 
 ## Verify it (please do these on the live site)
@@ -26,7 +27,8 @@ Do not replace `reminders/firebase-config.js` with an npm-style file that uses `
 | Open the homepage logged out | “Mech Reminders” card is visible; it opens the page |
 | Open Mech Reminders logged out | Page loads; only published records; no admin controls |
 | Sign in with `ahmedramadantajeldin@gmail.com` | Dashboard appears; create / edit / publish / unpublish / delete work |
-| Sign in with `ahmedyasserr219@gmail.com` | Same shared dashboard and the same data |
+| Sign in with `ahmedyasserr219@gmail.com` (after the one-time import) | Same shared dashboard and data; **no** Admin Management section |
+| Owner: add a new e-mail, sign in with it | Dashboard appears at once; revoke it → the open page loses the dashboard within seconds |
 | Sign in with any other Google account | “not authorized” note, no dashboard |
 | Open the same page on a second device | Same records (data is in Firestore) |
 | Firebase console → Firestore → Rules → *Rules Playground* | An unauthenticated *write* to `submissions/x` is denied; a *read* of an unpublished document is denied |
@@ -38,7 +40,7 @@ Do not replace `reminders/firebase-config.js` with an npm-style file that uses `
 * **Data:** Cloud Firestore, one collection `submissions`. Each record: `subject`, `type` (7 allowed values), `deadline`, `closesAt` (both timestamps, stored in UTC, shown in Cairo time), optional `courseCode` / `description`, `attachments[]` (`title`, `url` https only, optional `description`, max 10), `published`, `createdAt`, `updatedAt`.
 * **Security:** `firestore.rules`.
   * Anyone may read a record only if `published == true`. Unpublished records are readable by admins only.
-  * Create/update/delete require a **verified** e-mail equal (case-insensitively) to one of the two allowed addresses, and the data must pass the same validation as the form (type list, closes ≥ deadline, https links, field sizes, server timestamps).
+  * Create/update/delete require a **verified** e-mail that is the owner or has an **active** entry in the `admins` collection (re-checked on every request), and the data must pass the same validation as the form (type list, closes ≥ deadline, https links, field sizes, server timestamps).
   * The browser never receives a secret. Hiding buttons is only cosmetic; the rules decide.
 * **Public vs. admin data:** public pages query `published == true` only; admins subscribe to the whole collection.
 * **PWA:** `sw.js`, `manifest.webmanifest` are unchanged. The service worker ignores `reminders/` (it only handles the homepage shell and icons), so the Reminders page and its data are never served from a cache and always load the latest code. Consequence: **the Reminders page needs a connection** (it shows the offline banner).
@@ -51,7 +53,7 @@ Do not replace `reminders/firebase-config.js` with an npm-style file that uses `
 
 ## Things you may want to change
 
-* **Admins:** edit the list in **both** `firestore.rules` (authoritative; re-publish it) and `ADMIN_HINT` at the top of `reminders/reminders.js` (only decides whether the dashboard is shown).
+* **Admins:** no code or rules edit is needed any more. The owner (`ahmedramadantajeldin@gmail.com`, fixed in `ownerEmail()` in `firestore.rules` and `OWNER_EMAIL` in `reminders/core.js`) adds, revokes, restores and removes administrators in the **Admin Management** section of the page. The list is stored in Firestore (`admins/{e-mail}`). Changing the owner itself is the only thing that still needs a rules edit + re-publish.
 * **Time zone:** `TZ` at the top of `reminders/core.js` (default `Africa/Cairo`). Admins type times in this zone regardless of the device zone.
 * **Firebase SDK version:** `SDK_VERSION` in `reminders/backend.js` (loaded from Google’s CDN; the exact version was not loadable from the author’s offline environment — if the page reports “Could not load the Firebase library”, check this value against <https://firebase.google.com/support/release-notes/js>).
 * **Card position:** the homepage card sits directly under the Drive card. To show it first, move `<div id="reminders-slot">` above `<div id="drive-slot">` in `index.html` (and move `#reminders-slot{margin-top:16px}` to `#drive-slot`).

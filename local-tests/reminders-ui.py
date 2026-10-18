@@ -13,7 +13,8 @@ from playwright.sync_api import sync_playwright
 
 BASE = 'http://localhost:8772/MechLibrary/'
 CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
-ADMINS = ['ahmedramadantajeldin@gmail.com', 'ahmedyasserr219@gmail.com']
+OWNER = 'ahmedramadantajeldin@gmail.com'
+PREVIOUS = ['ahmedyasserr219@gmail.com', 'mohamed.ibrahim200600@gmail.com', 'ahmedtageldien83@gmail.com']   # migrated into the admins collection
 SDK = 'https://www.gstatic.com/firebasejs/10.14.1/'
 
 CONFIG_JS = """export const FIREBASE_CONFIG={apiKey:'test',authDomain:'test.firebaseapp.com',projectId:'test',appId:'test'};
@@ -31,7 +32,10 @@ export class GoogleAuthProvider{}
 export const signInWithPopup=async()=>{if(S.popupError){const e=new Error('x');e.code=S.popupError;throw e;}S.user=S.nextUser;S.authCbs.forEach(cb=>cb(S.user));};
 export const signOut=async()=>{S.user=null;S.authCbs.forEach(cb=>cb(null));};""",
  'firebase-firestore.js': """const S=globalThis.__fb;
-const isAdmin=()=>S.user&&S.user.emailVerified&&S.admins.includes(S.user.email.toLowerCase());
+const OWNER='ahmedramadantajeldin@gmail.com';
+const me=()=>S.user&&S.user.emailVerified?S.user.email.toLowerCase():null;
+const isOwner=()=>me()===OWNER;
+const isAdmin=()=>isOwner()||!!(me()&&S.adminDocs[me()]&&S.adminDocs[me()].active===true);
 const deny=()=>{const e=new Error('denied');e.code='permission-denied';throw e;};
 export const getFirestore=()=>({});
 export const collection=(db,name)=>({kind:'col',name});
@@ -40,21 +44,38 @@ export const where=(f,op,v)=>({f,op,v});
 export const query=(col,...w)=>({kind:'q',col,w});
 export const Timestamp={fromMillis:(ms)=>({__ts:ms,toMillis:()=>ms})};
 export const serverTimestamp=()=>({__ts:Date.now(),toMillis(){return this.__ts;}});
+export const deleteField=()=>({__del:true});
 const snap=(q)=>S.docs.filter(d=>q.w.every(c=>d.data[c.f]===c.v)).map(d=>({id:d.id,data:()=>d.data}));
-export const onSnapshot=(q,ok,err)=>{const t=q.kind==='q'?q:{col:q,w:[]};const pub=t.w.some(c=>c.f==='published'&&c.v===true);
+export const onSnapshot=(q,ok,err)=>{
+  if(q.kind==='doc'&&q.name==='admins'){
+    const run=()=>{ if(!(isOwner()||(me()&&q.id===me()))){err({code:'permission-denied'});return;} const d=S.adminDocs[q.id]; ok({exists:()=>!!d,data:()=>d}); };
+    S.subs.add(run);setTimeout(()=>{if(S.subs.has(run))run();},0);return ()=>S.subs.delete(run);}
+  if(q.kind==='col'&&q.name==='admins'){
+    const run=()=>{ if(S.adminListError){err({code:'unavailable'});return;} if(!isOwner()){err({code:'permission-denied'});return;} ok({docs:Object.entries(S.adminDocs).map(([id,d])=>({id,data:()=>d}))}); };
+    S.subs.add(run);setTimeout(()=>{if(S.subs.has(run))run();},0);return ()=>S.subs.delete(run);}
+  const t=q.kind==='q'?q:{col:q,w:[]};const pub=t.w.some(c=>c.f==='published'&&c.v===true);
   const run=()=>{ if(!pub&&!isAdmin()){err({code:'permission-denied'});return;} ok({docs:snap(t)}); };
-  S.subs.add(run);setTimeout(run,0);return ()=>S.subs.delete(run);};
-const bump=()=>S.subs.forEach(f=>f());
+  S.subs.add(run);setTimeout(()=>{if(S.subs.has(run))run();},0);return ()=>S.subs.delete(run);};
+const bump=()=>[...S.subs].forEach(f=>{if(S.subs.has(f))f();});
+S.bump=bump;
+const adminWrite=()=>{ if(!isOwner()||S.denyAdminWrites)deny(); };
+const mkAdmin=(id,o)=>({email:id,active:true,addedBy:me(),createdAt:serverTimestamp(),updatedAt:serverTimestamp(),...o});
 export const addDoc=async(col,data)=>{if(!isAdmin())deny();const id='n'+(++S.seq);S.docs.push({id,data:{...data}});S.writes.push(['add',id]);bump();return {id};};
-export const updateDoc=async(ref,data)=>{if(!isAdmin())deny();const d=S.docs.find(x=>x.id===ref.id);if(!d)deny();Object.assign(d.data,data);S.writes.push(['update',ref.id]);bump();};
-export const deleteDoc=async(ref)=>{if(!isAdmin())deny();S.docs=S.docs.filter(x=>x.id!==ref.id);S.writes.push(['delete',ref.id]);bump();};""",
+export const setDoc=async(ref,data)=>{adminWrite();if(S.adminDocs[ref.id])deny();S.adminDocs[ref.id]=mkAdmin(ref.id,{});S.adminWrites.push(['set',ref.id]);bump();};
+export const updateDoc=async(ref,data)=>{
+  if(ref.name==='admins'){adminWrite();const d=S.adminDocs[ref.id];if(!d)deny();for(const [k,v] of Object.entries(data)){if(v&&v.__del)delete d[k];else d[k]=v;}S.adminWrites.push(['update',ref.id,data.active]);bump();return;}
+  if(!isAdmin())deny();const d=S.docs.find(x=>x.id===ref.id);if(!d)deny();Object.assign(d.data,data);S.writes.push(['update',ref.id]);bump();};
+export const deleteDoc=async(ref)=>{
+  if(ref.name==='admins'){adminWrite();delete S.adminDocs[ref.id];S.adminWrites.push(['delete',ref.id]);bump();return;}
+  if(!isAdmin())deny();S.docs=S.docs.filter(x=>x.id!==ref.id);S.writes.push(['delete',ref.id]);bump();};
+export const writeBatch=()=>{const ops=[];return {set:(ref,data)=>{ops.push(ref);},commit:async()=>{adminWrite();if(ops.some(r=>S.adminDocs[r.id]))deny();ops.forEach(r=>{S.adminDocs[r.id]=mkAdmin(r.id,{});S.adminWrites.push(['batch-set',r.id]);});bump();}};};""" ,
 }
 
-def init_script(user=None, extra=''):
+def init_script(user=None, extra='', admins=None):
     return """
 (()=>{ const H=3600e3,D=24*H,now=Date.now(); const ts=(ms)=>({__ts:ms,toMillis:()=>ms});
  const mk=(id,o)=>({id,data:Object.assign({courseCode:'',description:'',attachments:[],published:true,createdAt:ts(now),updatedAt:ts(now)},o,{deadline:ts(o.deadline),closesAt:ts(o.closesAt)})});
- globalThis.__fb={admins:%s,user:%s,nextUser:null,apps:[],inits:0,authCbs:[],subs:new Set(),writes:[],seq:0,popupError:null,docs:[
+ globalThis.__fb={adminDocs:Object.fromEntries(%s.map(e=>[e,{email:e,active:true,addedBy:'ahmedramadantajeldin@gmail.com',createdAt:ts(now),updatedAt:ts(now)}])),adminWrites:[],user:%s,nextUser:null,apps:[],inits:0,authCbs:[],subs:new Set(),writes:[],seq:0,popupError:null,docs:[
   mk('A',{subject:'Heat Transfer',type:'Quiz',deadline:now+5*H,closesAt:now+6*H,description:'Chapters 1-3',attachments:[{title:'Sheet 1',url:'https://example.com/a.pdf',description:'Bring a calculator'},{title:'Bad link',url:'javascript:alert(1)',description:''}]}),
   mk('B',{subject:'Fluid Mechanics II',type:'Assignment',deadline:now+10*D,closesAt:now+10*D+2*H}),
   mk('C',{subject:'Heat Transfer',type:'Midterm',deadline:now-2*H,closesAt:now+5*H}),
@@ -62,19 +83,20 @@ def init_script(user=None, extra=''):
   mk('E',{subject:'SECRET DRAFT',type:'Quiz',deadline:now+3*D,closesAt:now+3*D+H,published:false}),
   mk('F',{subject:'<img src=x onerror="window.__xss=1">',type:'M Quiz',deadline:now+20*D,closesAt:now+21*D}),
  ]};
- %s })();""" % (json.dumps(ADMINS), json.dumps(user), extra)
+ %s })();""" % (json.dumps(PREVIOUS if admins is None else admins), json.dumps(user), extra)
 
-ADMIN1 = {'email': ADMINS[0], 'emailVerified': True, 'displayName': 'Admin One'}
-ADMIN2 = {'email': ADMINS[1].upper(), 'emailVerified': True, 'displayName': 'Admin Two'}   # upper-case: allowlist must be case-insensitive
+ADMIN1 = {'email': OWNER, 'emailVerified': True, 'displayName': 'Owner'}                      # the owner is an administrator too
+ADMIN2 = {'email': PREVIOUS[0].upper(), 'emailVerified': True, 'displayName': 'Admin Two'}   # listed in the admins collection; upper-case: matching must be case-insensitive
 OTHER = {'email': 'someone.else@gmail.com', 'emailVerified': True, 'displayName': 'Other'}
-UNVERIFIED = {'email': ADMINS[0], 'emailVerified': False, 'displayName': 'Spoof'}
+UNVERIFIED = {'email': OWNER, 'emailVerified': False, 'displayName': 'Spoof'}
+UNVERIFIED_LISTED = {'email': PREVIOUS[0], 'emailVerified': False, 'displayName': 'Spoof2'}
 
 results = []
 def check(name, cond, detail=''):
     results.append((bool(cond), name, detail))
     print(('PASS ' if cond else 'FAIL ') + name + (f'  [{detail}]' if (detail and not cond) else ''))
 
-def open_page(browser, path='reminders/', user=None, extra='', configured=True, viewport=None, grant=False):
+def open_page(browser, path='reminders/', user=None, extra='', configured=True, viewport=None, grant=False, admins=None):
     ctx = browser.new_context(viewport=viewport or {'width': 1280, 'height': 900})
     page = ctx.new_page()
     errors = []
@@ -86,7 +108,7 @@ def open_page(browser, path='reminders/', user=None, extra='', configured=True, 
         page.route('**/reminders/firebase-config.js', lambda r: r.fulfill(body=CONFIG_JS, content_type='text/javascript'))
         for name, body in STUB.items():
             page.route(SDK + name, lambda r, req, b=body: r.fulfill(body=b, content_type='text/javascript'))
-    page.add_init_script(init_script(user, extra))
+    page.add_init_script(init_script(user, extra, admins))
     page.goto(BASE + path)
     return ctx, page, errors
 
@@ -135,7 +157,7 @@ def run():
         ctx, page, errs = open_page(browser); page.wait_for_selector('#list .sub-card')
         txt = page.locator('#list').inner_text()
         check('3  public: 5 published records shown, draft hidden', cards(page).count() == 5 and 'SECRET DRAFT' not in txt and 'SECRET DRAFT' not in page.content())
-        check('3  public: no admin controls visible', page.locator('#admin').is_hidden() and page.locator('[data-act=edit]').count() == 0 and page.locator('#admin-new').is_hidden())
+        check('3  public: no admin controls visible', page.locator('#admin').is_hidden() and page.locator('#owner-panel').is_hidden() and page.locator('#owner-list li').count() == 0 and page.locator('[data-act=edit]').count() == 0 and page.locator('#admin-new').is_hidden())
         check('3  public: only a sign-in entry, no signed-in identity', 'Administrator sign-in' in page.locator('#account').inner_text())
         groups = page.eval_on_selector_all('#list .group', 'g=>g.map(x=>x.dataset.group)')
         check('3  public: grouped upcoming → overdue → closed', groups == ['upcoming', 'overdue', 'past'], str(groups))
@@ -173,9 +195,12 @@ def run():
         check('4  non-admin signed in: sees notice, no dashboard, only published data', 'not authorized' in page.locator('#account').inner_text() and page.locator('#admin').is_hidden() and cards(page).count() == 5)
         r = page.evaluate("""async()=>{const m=await import('./firebase-config.js');const F=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
             try{await F.addDoc(F.collection({}, 'submissions'),{x:1});return 'allowed';}catch(e){return e.code;}}""")
-        check('4  [SIMULATED backend] non-admin write rejected', r == 'permission-denied', str(r)); ctx.close()
-        ctx, page, errs = open_page(browser, user=UNVERIFIED); page.wait_for_selector('#list .sub-card')
-        check('4  allow-listed email but UNVERIFIED → no dashboard', page.locator('#admin').is_hidden()); ctx.close()
+        check('4  [SIMULATED backend] non-admin write rejected', r == 'permission-denied', str(r))
+        check('4  non-admin: no Admin Management panel and no list of administrators in the page', page.locator('#owner-panel').is_hidden() and not any(e in page.content() for e in PREVIOUS))
+        ctx.close()
+        for label, u in (('owner e-mail', UNVERIFIED), ('listed administrator', UNVERIFIED_LISTED)):
+            ctx, page, errs = open_page(browser, user=u); page.wait_for_selector('#list .sub-card'); page.wait_for_timeout(200)
+            check(f'4  UNVERIFIED {label} → no dashboard, no Admin Management, drafts not shown', page.locator('#admin').is_hidden() and page.locator('#owner-panel').is_hidden() and 'SECRET DRAFT' not in page.content()); ctx.close()
 
         # ---------- 5. Admin flows ----------
         for label, u in (('admin 1', ADMIN1), ('admin 2 (upper-case email)', ADMIN2)):
@@ -261,14 +286,109 @@ def run():
         ctx, page, errs = open_page(browser, extra="globalThis.__fb.popupError='auth/popup-blocked'"); page.wait_for_selector('#list .sub-card')
         page.click('text=Administrator sign-in'); page.wait_for_timeout(200)
         check('7  sign-in popup blocked → helpful message', 'pop-up' in page.locator('#status').inner_text().lower()); ctx.close()
-        ctx, page, errs = open_page(browser, user=ADMIN1, extra="globalThis.__fb.admins=[]")   # page thinks admin, server (stub) disagrees
-        page.wait_for_selector('#status .notice'); 
-        check('7  server refuses admin read → error shown, no crash', 'Not allowed' in page.locator('#status').inner_text()); ctx.close()
-        # write rejected by the server while UI believed admin
-        ctx, page, errs = open_page(browser, user=ADMIN1); page.wait_for_selector('#admin-list .admin-row')
-        page.evaluate("globalThis.__fb.admins=[]")
-        page.locator('#admin-list [data-act=unpublish]').first.click(); page.wait_for_timeout(200)
-        check('7  [SIMULATED] server rejects a write → clear error, UI stays usable', 'Not allowed' in page.locator('#status').inner_text()); ctx.close()
+        # administrator whose entry does not exist / is not active at load time → treated as an ordinary visitor
+        ctx, page, errs = open_page(browser, user=ADMIN2, admins=[]); page.wait_for_selector('#list .sub-card'); page.wait_for_timeout(200)
+        check('7  listed-looking e-mail but NO entry in the admin list → no dashboard, "not authorized"', page.locator('#admin').is_hidden() and 'not authorized' in page.locator('#account').inner_text() and 'SECRET DRAFT' not in page.content()); ctx.close()
+        # write rejected by the server while the page still believed the account was an administrator
+        ctx, page, errs = open_page(browser, user=ADMIN2); page.wait_for_selector('#admin-list .admin-row')
+        page.evaluate("globalThis.__fb.adminDocs={}")                 # server-side change the page has not heard about yet (no notification)
+        page.locator('#admin-list [data-act=unpublish]').first.click(); page.wait_for_timeout(250)
+        check('7  [SIMULATED] server rejects a write → clear error, no change made', 'Not allowed' in page.locator('#status').inner_text() and page.evaluate('globalThis.__fb.writes.length') == 0)
+        ctx.close()
+        # the admin query itself is refused while the page believed the account was an administrator → page demotes itself
+        ctx, page, errs = open_page(browser, user=ADMIN2); page.wait_for_selector('#admin-list .admin-row')
+        page.evaluate("globalThis.__fb.adminDocs={}; globalThis.__fb.subs.forEach(f=>f())"); page.wait_for_timeout(300)
+        check('7  [SIMULATED] server refuses the admin query → page falls back to the public view by itself', page.locator('#admin').is_hidden() and 'SECRET DRAFT' not in page.content() and cards(page).count() == 5 and 'revoked' in page.locator('#account').inner_text())
+        ctx.close()
+
+        # ---------- 9. Admin Management (owner only) ----------
+        ctx, page, errs = open_page(browser, user=ADMIN1); page.wait_for_selector('#owner-list [data-email]')
+        check('9  owner: "Admin Management" visible, lists the owner + 3 migrated administrators (all Active)',
+              page.locator('#owner-panel').is_visible() and page.locator('#owner-list li').count() == 4 and page.locator('#owner-list [data-active=true]').count() == 3 and 'Admin Management' in page.inner_text('#owner-title'))
+        check('9  owner row is fixed: badge "Owner", no revoke / remove button', 'Owner' in page.inner_text('#owner-list li[data-owner]') and page.locator('#owner-list li[data-owner] button').count() == 0)
+        check('9  owner: account bar says Owner; import banner hidden when the list is not empty', 'Owner' in page.locator('#account').inner_text() and page.locator('#owner-import').is_hidden())
+        # validation
+        for typed, expect in (('', 'Enter an e-mail'), ('not-an-email', 'valid e-mail'), (OWNER.upper(), 'owner account'), (PREVIOUS[0].upper(), 'already an administrator')):
+            page.fill('#owner-email', typed); page.click('#owner-add-btn')
+            check(f'9  add validation: {typed or "(empty)"!r} → "{expect}"', expect in page.inner_text('#owner-email-err') and page.evaluate('globalThis.__fb.adminWrites.length') == 0, page.inner_text('#owner-email-err'))
+        # add
+        page.fill('#owner-email', '  New.Admin@Example.com '); page.click('#owner-add-btn'); page.wait_for_selector('#owner-list [data-email="new.admin@example.com"]')
+        check('9  add: row appears lower-cased and Active; success message; input cleared',
+              page.locator('#owner-list [data-email="new.admin@example.com"][data-active=true]').count() == 1 and 'Administrator added' in page.inner_text('#owner-msg') and page.input_value('#owner-email') == '')
+        check('9  add: exactly one write, to the lower-cased e-mail', page.evaluate('globalThis.__fb.adminWrites') == [['set', 'new.admin@example.com']], str(page.evaluate('globalThis.__fb.adminWrites')))
+        # revoke with confirmation
+        victim = PREVIOUS[1]; row = page.locator(f'#owner-list [data-email="{victim}"]')
+        row.locator('[data-act=revoke]').click()
+        check('9  revoke asks for confirmation and names the account', page.locator('#owner-confirm-dialog').is_visible() and victim in page.inner_text('#owner-confirm-text') and 'Revoke' in page.inner_text('#oc-confirm'))
+        page.click('#oc-cancel'); check('9  cancel keeps the account Active and writes nothing', row.get_attribute('data-active') == 'true' and ['update', victim, False] not in page.evaluate('globalThis.__fb.adminWrites'))
+        row.locator('[data-act=revoke]').click(); page.click('#oc-confirm'); page.wait_for_selector('#owner-confirm-dialog', state='hidden')
+        check('9  revoke: row shows Revoked (kept in the list), success message', row.get_attribute('data-active') == 'false' and 'Revoked' in row.inner_text() and 'Access revoked' in page.inner_text('#owner-msg') and row.locator('[data-act=restore]').count() == 1)
+        page.fill('#owner-email', victim); page.click('#owner-add-btn')
+        check('9  adding a revoked account points to "Restore access" instead', 'Restore access' in page.inner_text('#owner-email-err'))
+        row.locator('[data-act=restore]').click(); page.wait_for_function("document.querySelector('#owner-list [data-email=\"%s\"]').dataset.active==='true'" % victim)
+        check('9  restore: Active again, no confirmation needed', 'Access restored' in page.inner_text('#owner-msg'))
+        row.locator('[data-act=remove]').click()
+        check('9  remove asks for confirmation', page.locator('#owner-confirm-dialog').is_visible() and 'removed from the list' in page.inner_text('#owner-confirm-text')); page.click('#oc-confirm'); page.wait_for_selector('#owner-confirm-dialog', state='hidden')
+        check('9  remove: row gone, success message', row.count() == 0 and 'Administrator removed' in page.inner_text('#owner-msg'))
+        # XSS: an e-mail made of markup is shown as text
+        page.fill('#owner-email', '<i>@example.com'); page.click('#owner-add-btn'); page.wait_for_selector('#owner-list [data-email="<i>@example.com"]')
+        check('9  markup in an e-mail is shown as text, never as HTML', page.locator('#owner-list i').count() == 0 and '<i>@example.com' in page.inner_text('#owner-list'))
+        # new admin can sign in, the owner panel does not linger after sign-out
+        page.click('text=Sign out'); page.wait_for_timeout(200)
+        check('9  sign-out empties the Admin Management panel (nothing lingers in the page)', page.locator('#owner-panel').is_hidden() and page.locator('#owner-list li').count() == 0 and 'new.admin@example.com' not in page.content())
+        page.evaluate("globalThis.__fb.nextUser=%s" % json.dumps({'email': 'New.Admin@Example.com', 'emailVerified': True, 'displayName': 'New'}))
+        page.click('text=Administrator sign-in'); page.wait_for_selector('#admin:not([hidden])')
+        check('9  the newly added administrator gets the dashboard at once (no code change, no redeploy) but NOT Admin Management',
+              page.locator('#admin-list .admin-row').count() >= 6 and page.locator('#owner-panel').is_hidden() and 'Administrator' in page.locator('#account').inner_text() and 'Owner' not in page.locator('#account').inner_text())
+        check('9  owner session: no console errors', not errs, str(errs)); ctx.close()
+
+        # a regular administrator
+        ctx, page, errs = open_page(browser, user=ADMIN2); page.wait_for_selector('#admin-list .admin-row')
+        check('9  regular admin: dashboard yes, Admin Management no, other administrators never reach the page',
+              page.locator('#admin').is_visible() and page.locator('#owner-panel').is_hidden() and not any(e in page.content() for e in PREVIOUS[1:]))
+        r = page.evaluate("""async()=>{const F=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');const out=[];
+            for(const f of [()=>F.setDoc(F.doc({},'admins','evil@x.com'),{}),()=>F.deleteDoc(F.doc({},'admins','%s')),()=>F.updateDoc(F.doc({},'admins','%s'),{active:false})]){try{await f();out.push('allowed');}catch(e){out.push(e.code);}}return out;}""" % (PREVIOUS[1], PREVIOUS[1]))
+        check('9  [SIMULATED] regular admin: add / delete / revoke straight against the backend are refused', r == ['permission-denied'] * 3, str(r))
+        # live revocation in an open session
+        page.click('#admin-new'); page.fill('#f-subject', 'half typed')
+        page.evaluate("globalThis.__fb.adminDocs[%s].active=false; globalThis.__fb.bump()" % json.dumps(PREVIOUS[0]))
+        page.wait_for_selector('#admin', state='hidden', timeout=3000)
+        check('9  LIVE revocation: open dashboard disappears, open form is closed, drafts are gone from the page',
+              not page.evaluate("document.getElementById('form-dialog').open") and 'SECRET DRAFT' not in page.content() and 'half typed' not in page.content() and cards(page).count() == 5)
+        check('9  LIVE revocation: account bar explains it; no error banner left behind', 'revoked' in page.locator('#account').inner_text() and page.locator('#status .notice.error').count() == 0, page.locator('#account').inner_text())
+        page.evaluate("globalThis.__fb.writes.length=0")
+        page.evaluate("globalThis.__fb.adminDocs[%s].active=true; globalThis.__fb.bump()" % json.dumps(PREVIOUS[0]))
+        page.wait_for_selector('#admin:not([hidden])', timeout=3000); page.wait_for_selector('#admin-list .admin-row')
+        check('9  LIVE restore: dashboard returns without reloading the page', page.locator('#admin-list .admin-row').count() == 6 and 'revoked' not in page.locator('#account').inner_text())
+        page.evaluate("delete globalThis.__fb.adminDocs[%s]; globalThis.__fb.bump()" % json.dumps(PREVIOUS[0]))
+        page.wait_for_selector('#admin', state='hidden', timeout=3000)
+        check('9  LIVE removal: dashboard disappears as well', 'SECRET DRAFT' not in page.content())
+        check('9  regular admin session: no console errors', not errs, str(errs)); ctx.close()
+
+        # live grant to a signed-in stranger
+        ctx, page, errs = open_page(browser, user=OTHER); page.wait_for_selector('#list .sub-card'); page.wait_for_timeout(200)
+        check('9  stranger signed in: no dashboard', page.locator('#admin').is_hidden() and 'not authorized' in page.locator('#account').inner_text())
+        page.evaluate("globalThis.__fb.adminDocs['someone.else@gmail.com']={email:'someone.else@gmail.com',active:true}; globalThis.__fb.bump()")
+        page.wait_for_selector('#admin:not([hidden])', timeout=3000)
+        check('9  LIVE grant: dashboard appears for the stranger once the owner adds them', page.locator('#owner-panel').is_hidden() and 'Administrator' in page.locator('#account').inner_text()); ctx.close()
+
+        # empty list → one-time import banner
+        ctx, page, errs = open_page(browser, user=ADMIN1, admins=[]); page.wait_for_selector('#owner-import:not([hidden])')
+        check('9  empty list: owner sees the one-time import banner and "No other administrators yet"', 'No other administrators yet' in page.inner_text('#owner-list') and page.locator('#owner-import-btn').is_visible())
+        page.click('#owner-import-btn'); page.wait_for_function("document.querySelectorAll('#owner-list [data-email]').length===3")
+        check('9  import: the 3 previous administrators are added in one batch; banner disappears',
+              sorted(page.evaluate('globalThis.__fb.adminWrites')) == sorted([['batch-set', e] for e in PREVIOUS]) and page.locator('#owner-import').is_hidden() and 'imported' in page.inner_text('#owner-msg'))
+        ctx.close()
+        ctx, page, errs = open_page(browser, user=ADMIN1, admins=[]); page.wait_for_selector('#owner-import:not([hidden])')
+        page.click('#owner-import-dismiss'); page.reload(); page.wait_for_selector('#owner-list [data-owner]'); page.wait_for_timeout(300)
+        check('9  "Not now" hides the banner on this device', page.locator('#owner-import').is_hidden()); ctx.close()
+
+        # owner write refused by the server / list cannot load
+        ctx, page, errs = open_page(browser, user=ADMIN1, extra="globalThis.__fb.denyAdminWrites=true"); page.wait_for_selector('#owner-list [data-email]')
+        page.fill('#owner-email', 'x@example.com'); page.click('#owner-add-btn'); page.wait_for_selector('#owner-msg .notice.error')
+        check('9  [SIMULATED] server refuses the add → clear error, no row added', 'Only the owner' in page.inner_text('#owner-msg') and page.locator('#owner-list [data-email="x@example.com"]').count() == 0); ctx.close()
+        ctx, page, errs = open_page(browser, user=ADMIN1, extra="globalThis.__fb.adminListError=true"); page.wait_for_selector('#owner-msg .notice.error')
+        check('9  list cannot be loaded → error shown, no misleading import banner, owner row still there', page.locator('#owner-import').is_hidden() and page.locator('#owner-list [data-owner]').count() == 1); ctx.close()
 
         # ---------- 8. Layout ----------
         for name, vp in (('mobile 375', {'width': 375, 'height': 800}), ('tablet 768', {'width': 768, 'height': 1000}), ('desktop 1280', {'width': 1280, 'height': 900})):
@@ -277,10 +397,11 @@ def run():
             check(f'8  {name}: no horizontal scroll (reminders)', ov <= 0, str(ov))
             if name.startswith('mobile'):
                 page.screenshot(path='/home/claude/shots/rem-mobile.png', full_page=True)
+                page.locator('#owner-panel').screenshot(path='/home/claude/shots/owner-mobile.png')
                 page.click('#admin-new'); page.screenshot(path='/home/claude/shots/rem-mobile-form.png')
                 fits = page.evaluate("(()=>{const d=document.getElementById('form-dialog').getBoundingClientRect();return d.width<=window.innerWidth})()")
                 check('8  mobile: form dialog fits the screen', fits)
-            if name.startswith('desktop'): page.screenshot(path='/home/claude/shots/rem-desktop.png', full_page=True)
+            if name.startswith('desktop'): page.screenshot(path='/home/claude/shots/rem-desktop.png', full_page=True); page.locator('#owner-panel').screenshot(path='/home/claude/shots/owner-desktop.png')
             ctx.close()
             ctx = browser.new_context(viewport=vp); pg = ctx.new_page(); pg.goto(BASE)
             ov = pg.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')

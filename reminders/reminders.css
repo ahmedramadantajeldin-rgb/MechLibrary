@@ -81,7 +81,7 @@ main{padding-bottom:56px}
 .toolbar{display:grid;gap:12px;grid-template-columns:1fr;align-items:end}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .field>label,legend{font-size:.82rem;font-weight:700;color:var(--steel);letter-spacing:.02em}
-select,input[type=text],input[type=url],input[type=datetime-local],textarea{width:100%;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem}
+select,input[type=text],input[type=url],input[type=email],input[type=datetime-local],textarea{width:100%;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem}
 textarea{min-height:84px;resize:vertical}
 select:focus,input:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(22,132,71,.2)}
 .tz-note{font-size:.85rem;color:var(--steel)}
@@ -107,12 +107,27 @@ fieldset legend{width:100%;padding:0;margin-bottom:4px}
 .admin-row{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-btn);background:var(--paper)}
 .admin-row .title{font-weight:700;overflow-wrap:anywhere}
 .admin-row .sub{font-size:.88rem;color:var(--steel)}
-.admin-row>div:first-child{flex:1 1 320px;min-width:0}
+.admin-row>div:first-child{flex:0 0 auto;min-width:0}
 .admin-actions{display:flex;flex-wrap:wrap;gap:8px;flex:none}
 .badge{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:100px;font-size:.78rem;font-weight:700;letter-spacing:.02em;border:1px solid transparent}
 .badge.pub{background:var(--tint);color:var(--green-d);border-color:var(--green)}
 .badge.draft{background:var(--slate-bg);color:var(--slate);border-color:#C5CDD3}
 .badge.type{background:var(--ink);color:#fff}
+
+/* Admin Management (owner only) */
+.owner-panel{border-left-color:var(--green)}
+.owner-add{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.owner-add .field{flex:1 1 auto}
+.owner-add input{width:100%}
+.owner-add .btn{align-self:flex-start}
+.admin-row.is-revoked{background:var(--slate-bg);border-style:dashed}
+.admin-row.is-revoked .title{color:var(--steel)}
+.badge.revoked{background:var(--red-bg);color:var(--red);border-color:#E7A7A3}
+.badge.owner{background:var(--ink);color:#fff}
+@media (min-width:600px){
+  .owner-add{flex-direction:row;align-items:flex-end}
+  .owner-add .btn{align-self:flex-end}
+}
 
 /* Groups + submission cards */
 .group{display:flex;flex-direction:column;gap:14px}
@@ -166,6 +181,7 @@ dialog::backdrop{background:rgba(21,21,21,.6)}
   .cards{grid-template-columns:repeat(2,1fr)}
   .form-grid.two{grid-template-columns:1fr 1fr}
   .admin-row{flex-direction:row;align-items:center;justify-content:space-between}
+  .admin-row>div:first-child{flex:1 1 320px}
 }
 @media (min-width:980px){
   .toolbar{grid-template-columns:repeat(4,1fr)}

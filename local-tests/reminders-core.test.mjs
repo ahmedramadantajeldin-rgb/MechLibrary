@@ -172,3 +172,47 @@ test('shipped Firebase config: complete, matches the mechhub-reminders project, 
   assert.equal(m.FIREBASE_CONFIG.appId, '1:351195022792:web:70969d45b9e8eed61bacfd');
   assert.ok(Object.values(m.FIREBASE_CONFIG).every((v) => !/REPLACE_ME/.test(v)));
 });
+
+/* ---------- administrator management helpers ---------- */
+test('normalizeEmail / isValidEmail', () => {
+  assert.equal(c.normalizeEmail('  Foo.Bar@Gmail.COM '), 'foo.bar@gmail.com');
+  for (const ok of ['a@b.co', 'name+tag@sub.example.org', 'ahmedtageldien83@gmail.com']) assert.equal(c.isValidEmail(ok), true, ok);
+  for (const bad of ['', 'a', 'a@b', '@b.com', 'a@@b.com', 'a b@c.com', 'a@b.c/om', 'x'.repeat(250) + '@b.com']) assert.equal(c.isValidEmail(bad), false, bad);
+});
+
+test('checkNewAdminEmail: owner, duplicates, revoked entries, invalid input', () => {
+  const list = [{ email: 'active@x.com', active: true }, { email: 'gone@x.com', active: false }];
+  assert.deepEqual(c.checkNewAdminEmail('  New@X.com ', list), { ok: true, email: 'new@x.com' });
+  assert.equal(c.checkNewAdminEmail('', list).code, 'invalid');
+  assert.equal(c.checkNewAdminEmail('nope', list).code, 'invalid');
+  assert.equal(c.checkNewAdminEmail(c.OWNER_EMAIL.toUpperCase(), list).code, 'owner');
+  assert.equal(c.checkNewAdminEmail('ACTIVE@x.com', list).code, 'exists');
+  assert.equal(c.checkNewAdminEmail('gone@x.com', list).code, 'revoked');
+  assert.equal(c.checkNewAdminEmail('new@x.com', undefined).ok, true);
+});
+
+test('sortAdmins: active first, then alphabetical; input not mutated', () => {
+  const input = [{ email: 'z@x.com', active: true }, { email: 'a@x.com', active: false }, { email: 'b@x.com', active: true }];
+  assert.deepEqual(c.sortAdmins(input).map((a) => a.email), ['b@x.com', 'z@x.com', 'a@x.com']);
+  assert.equal(input[0].email, 'z@x.com');
+});
+
+test('owner constant and the one-time import list are consistent with each other and with the rules', async () => {
+  const { readFileSync } = await import('node:fs');
+  assert.equal(c.OWNER_EMAIL, c.OWNER_EMAIL.toLowerCase());
+  assert.ok(!c.PREVIOUS_ADMINS.includes(c.OWNER_EMAIL));
+  assert.equal(new Set(c.PREVIOUS_ADMINS).size, 3);
+  assert.ok(c.PREVIOUS_ADMINS.every((e) => c.isValidEmail(e) && e === c.normalizeEmail(e)));
+  assert.match(readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8'), new RegExp(`return '${c.OWNER_EMAIL.replace(/\./g, '\\.')}';`));
+});
+
+test('no hard-coded administrator list remains in the site code: the only e-mail addresses are OWNER_EMAIL and the one-time PREVIOUS_ADMINS import list', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const dir = new URL('../reminders/', import.meta.url);
+  const allowed = new Set([c.OWNER_EMAIL, ...c.PREVIOUS_ADMINS]);
+  for (const f of readdirSync(dir).filter((n) => /\.(js|html)$/.test(n))) {
+    const found = readFileSync(new URL(f, dir), 'utf8').match(/[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
+    for (const e of found) if (!['name@gmail.com'].includes(e)) assert.ok(allowed.has(e.toLowerCase()), `${f} contains an unexpected e-mail address: ${e}`);
+    if (f !== 'core.js') assert.deepEqual(found.filter((e) => e !== 'name@gmail.com'), [], `${f} must not contain any administrator e-mail (only core.js may)`);
+  }
+});

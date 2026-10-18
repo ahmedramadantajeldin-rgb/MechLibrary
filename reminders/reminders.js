@@ -1,11 +1,12 @@
 /* Mech Reminders — UI.
- * Public visitors read PUBLISHED records. Administrators (verified Google account on the allowlist) also get the
- * dashboard. The allowlist below only decides what the page SHOWS; the real gate is firestore.rules on the server. */
+ * Public visitors read PUBLISHED records. Administrators get the dashboard. Who is an administrator is NOT written
+ * in this file: the owner (one fixed account) manages a list stored in Firestore (collection "admins"), and this page
+ * simply listens to its own entry in that list. Everything here only decides what the page SHOWS; the real gate is
+ * firestore.rules on the server, which re-checks the list on every request. */
 import * as core from './core.js';
 import { FIREBASE_CONFIG, isConfigured } from './firebase-config.js';
 import { createBackend } from './backend.js';
 
-const ADMIN_HINT = ['ahmedramadantajeldin@gmail.com', 'ahmedyasserr219@gmail.com'];   // UI hint only — keep in sync with firestore.rules
 const TICK_MS = 30 * 1000;
 const LS_SETTINGS = 'mechReminders.settings.v1';   // per-device notification preferences (not shared data)
 const LS_FIRED = 'mechReminders.fired.v1';
@@ -27,7 +28,10 @@ const PDF_ICON = '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2
 const CLOCK_ICON = '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';
 
 const state = {
-  backend: null, user: null, isAdmin: false,
+  backend: null, user: null, isAdmin: false, isOwner: false,
+  adminChecked: false, wasRevoked: false, authGen: 0, unsubSelf: null,         // own access entry (admins/{my e-mail})
+  admins: [], adminsLoaded: false, adminsError: false, unsubAdmins: null,       // the whole list (owner only)
+  ownerAction: null,
   records: [], loaded: false, unsub: null,
   filters: { subject: 'all', type: 'all', status: 'all', sort: 'smart' },
   now: Date.now(), sig: '',
@@ -45,7 +49,7 @@ function showStatus(kind, title, text) {
 }
 function explain(e) {
   const c = String((e && (e.code || e.message)) || '');
-  if (/permission-denied/.test(c)) return 'Not allowed. Only the two authorized administrator accounts can change Mech Reminders.';
+  if (/permission-denied/.test(c)) return 'Not allowed. Only authorized administrator accounts can change Mech Reminders (your access may have been revoked).';
   if (/unauthenticated/.test(c)) return 'You were signed out. Sign in again.';
   if (/unavailable|network/.test(c)) return 'Network problem. Check your connection and try again.';
   if (/popup-closed|cancelled-popup/.test(c)) return '';
@@ -60,6 +64,12 @@ function startWatching() {
   state.records = []; state.loaded = false;
   const ok = (rows) => { state.records = rows; state.loaded = true; showStatus(); renderAll(); checkReminders(); };
   const err = (e) => {
+    if (state.isAdmin && !state.isOwner && /permission-denied/.test(String((e && e.code) || ''))) {
+      // The server refused the admin query: this account is no longer an administrator, whatever the page last believed.
+      state.isAdmin = false; state.wasRevoked = true; state.adminChecked = true;
+      renderAccount(); startWatching();
+      return;
+    }
     state.loaded = true; state.records = [];
     showStatus('error', state.isAdmin ? 'Could not load the records.' : 'Could not load deadlines.', explain(e) || 'Try again in a moment.');
     renderAll();
@@ -68,15 +78,58 @@ function startWatching() {
   renderAll();
 }
 
+/* ================= who is an administrator ================= */
+function stopAccessWatchers() {
+  if (state.unsubSelf) { state.unsubSelf(); state.unsubSelf = null; }
+  if (state.unsubAdmins) { state.unsubAdmins(); state.unsubAdmins = null; }
+  state.admins = []; state.adminsLoaded = false; state.adminsError = false;
+}
+
 function onAuth(user) {
+  const gen = ++state.authGen;                       // callbacks from an earlier sign-in must never change this one
+  stopAccessWatchers();
   state.user = user;
-  state.isAdmin = !!user && user.verified && ADMIN_HINT.includes(user.email.toLowerCase());
+  const verified = !!user && user.verified;
+  state.isOwner = verified && core.normalizeEmail(user.email) === core.normalizeEmail(core.OWNER_EMAIL);
+  state.isAdmin = state.isOwner;                     // everyone else is NOT an admin until the server-side list says so
+  state.adminChecked = !verified || state.isOwner;
+  state.wasRevoked = false;
   renderAccount();
   startWatching();
+  if (!verified) return;
+  if (state.isOwner) watchOwnerList(gen); else watchOwnAccess(gen);
+}
+
+/** Listens to admins/{my e-mail}. The owner changing that document (grant / revoke / remove) reaches an open page within
+ *  moments: the page drops its dashboard and falls back to the published-only view. Writes were already refused by the server. */
+function watchOwnAccess(gen) {
+  const apply = (active) => {
+    if (gen !== state.authGen) return;
+    const was = state.isAdmin, first = !state.adminChecked;
+    state.adminChecked = true; state.isAdmin = active;
+    if (was && !active) state.wasRevoked = true;
+    if (active) state.wasRevoked = false;
+    if (first || was !== active) renderAccount();
+    if (was !== active) startWatching();            // swap between the published-only and the full (admin) query
+  };
+  try {
+    state.unsubSelf = state.backend.watchSelfAdmin(state.user.email,
+      (entry) => apply(!!entry && entry.active === true),
+      (e) => { if (/permission-denied/.test(String((e && e.code) || ''))) apply(false); });   // other errors (network): keep what we know
+  } catch (_) { apply(false); }
+}
+
+function watchOwnerList(gen) {
+  const stale = () => gen !== state.authGen;
+  try {
+    state.unsubAdmins = state.backend.watchAdmins(
+      (rows) => { if (stale()) return; state.admins = rows; state.adminsLoaded = true; state.adminsError = false; renderOwner(); },
+      (e) => { if (stale()) return; state.admins = []; state.adminsLoaded = true; state.adminsError = true; renderOwner(); ownerMsg('error', 'Could not load the administrator list.', explainOwner(e)); });
+  } catch (e) { state.adminsLoaded = true; state.adminsError = true; renderOwner(); ownerMsg('error', 'Could not load the administrator list.', explainOwner(e)); }
 }
 
 /* ================= rendering ================= */
-function renderAll() { renderStats(); renderFilters(); renderList(); renderAdmin(); state.sig = signature(); }
+function renderAll() { renderStats(); renderFilters(); renderList(); renderAdmin(); renderOwner(); state.sig = signature(); }
 
 function signature() {
   return state.records.map((r) => { const t = core.timeInfo(r, state.now); return `${r.id}:${t.status}:${t.urgency}:${r.published}`; }).join('|');
@@ -91,9 +144,13 @@ function renderAccount() {
     $('admin').hidden = true;
     return;
   }
+  const role = state.isOwner ? ' — Owner'
+    : state.isAdmin ? ' — Administrator'
+    : !state.adminChecked ? ''
+    : state.wasRevoked ? ' — your administrator access was revoked by the owner.'
+    : ' — this account is not authorized to manage Mech Reminders.';
   box.append(
-    h('span', { class: 'who' }, `Signed in as ${state.user.email}`,
-      state.isAdmin ? '' : ' — this account is not authorized to manage Mech Reminders.'),
+    h('span', { class: 'who' }, `Signed in as ${state.user.email}`, role),
     h('button', { type: 'button', class: 'btn btn-outline btn-sm', onclick: signOut }, 'Sign out'));
 }
 
@@ -210,16 +267,17 @@ function clearAdminDom() {
   state.editingId = state.publishId = state.deleteId = null;
 }
 
-async function guarded(fn, errBox) {
+/** Runs one write. errBox: an element (text is set on it), a function (receives the message) or nothing (page notice).
+ *  Refuses to start when this page no longer believes the account is an administrator (the server would refuse anyway). */
+async function guarded(fn, errBox, explainFn = explain) {
   if (state.busy) return false;
+  const report = (msg) => { if (typeof errBox === 'function') errBox(msg); else if (errBox) errBox.textContent = msg; else showStatus('error', 'That did not work.', msg); };
+  if (!state.isAdmin) { report('Not allowed. This account is no longer an authorized administrator.'); return false; }
   state.busy = true;
-  if (errBox) errBox.textContent = '';
+  if (errBox && typeof errBox !== 'function') errBox.textContent = '';
   try { await fn(); return true; }
-  catch (e) {
-    const msg = explain(e);
-    if (errBox) errBox.textContent = msg; else showStatus('error', 'That did not work.', msg);
-    return false;
-  } finally { state.busy = false; }
+  catch (e) { report(explainFn(e)); return false; }
+  finally { state.busy = false; }
 }
 
 async function setPublished(id, value) {
@@ -327,6 +385,107 @@ async function confirmDelete() {
   if (!id) return;
   const ok = await guarded(() => state.backend.remove(id), $('confirm-error'));
   if (ok) $('confirm-dialog').close();
+}
+
+/* ================= Admin Management (owner only) ================= */
+const ownerEmail = () => core.normalizeEmail(state.user && state.user.email);
+const LS_IMPORT = 'mechReminders.importDismissed.v1';   // per-device convenience only
+const importDismissed = () => { try { return localStorage.getItem(LS_IMPORT) === '1'; } catch (_) { return false; } };
+function dismissImport() { try { localStorage.setItem(LS_IMPORT, '1'); } catch (_) { /* ignore */ } $('owner-import').hidden = true; }
+
+function explainOwner(e) {
+  const c = String((e && (e.code || e.message)) || '');
+  if (/permission-denied/.test(c)) return 'Not allowed. Only the owner account can change administrators. If this is the owner account, sign out and sign in again.';
+  return explain(e);
+}
+
+function ownerMsg(kind, title, text) {
+  const box = $('owner-msg');
+  box.replaceChildren();
+  if (!title && !text) return;
+  box.append(h('div', { class: `notice ${kind}`, role: kind === 'error' ? 'alert' : null }, h('div', {}, title ? h('strong', {}, title) : null, text || '')));
+}
+
+function clearOwnerDom() {
+  const d = $('owner-confirm-dialog'); if (d.open) d.close();
+  $('owner-list').replaceChildren(); $('owner-msg').replaceChildren(); $('owner-email-err').textContent = ''; $('owner-form').reset();
+  $('owner-import').hidden = true;
+  state.ownerAction = null;
+}
+
+function renderOwner() {
+  const panel = $('owner-panel');
+  panel.hidden = !state.isOwner;
+  if (!state.isOwner) { clearOwnerDom(); return; }
+  const ul = $('owner-list');
+  ul.replaceChildren(h('li', { class: 'admin-row', 'data-owner': 'true' },
+    h('div', {},
+      h('div', { class: 'title' }, core.OWNER_EMAIL, ' ', h('span', { class: 'badge owner' }, 'Owner'), ' ', h('span', { class: 'badge pub' }, 'Active')),
+      h('div', { class: 'sub' }, 'Always has full access. It cannot be revoked, removed or changed here.'))));
+  if (!state.adminsLoaded) ul.append(h('li', { class: 'hint' }, 'Loading administrators…'));
+  for (const a of core.sortAdmins(state.admins)) {
+    const when = a.active ? (a.createdAt ? `Added ${core.formatCairo(a.createdAt)}` : 'Added just now')
+      : (a.revokedAt ? `Access revoked ${core.formatCairo(a.revokedAt)}` : 'Access revoked');
+    ul.append(h('li', { class: `admin-row${a.active ? '' : ' is-revoked'}`, 'data-email': a.email, 'data-active': String(a.active) },
+      h('div', {},
+        h('div', { class: 'title' }, a.email, ' ', h('span', { class: a.active ? 'badge pub' : 'badge revoked' }, a.active ? 'Active' : 'Revoked')),
+        h('div', { class: 'sub' }, when)),
+      h('div', { class: 'admin-actions' },
+        a.active
+          ? h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'revoke', onclick: () => openOwnerConfirm('revoke', a.email) }, 'Revoke access')
+          : h('button', { type: 'button', class: 'btn btn-sm', 'data-act': 'restore', onclick: () => restoreAdmin(a.email) }, 'Restore access'),
+        h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'remove', onclick: () => openOwnerConfirm('remove', a.email) }, 'Remove'))));
+  }
+  if (state.adminsLoaded && !state.adminsError && !state.admins.length) ul.append(h('li', { class: 'hint', 'data-role': 'empty' }, 'No other administrators yet. Add an e-mail above.'));
+  $('owner-import').hidden = !(state.adminsLoaded && !state.adminsError && state.admins.length === 0) || importDismissed();
+}
+
+async function addAdmin(ev) {
+  ev.preventDefault();
+  if (!state.isOwner) return;
+  const err = $('owner-email-err'); err.textContent = ''; ownerMsg();
+  const res = core.checkNewAdminEmail($('owner-email').value, state.admins);
+  if (!res.ok) { err.textContent = res.message; $('owner-email').focus(); return; }
+  const done = await guarded(() => state.backend.addAdmin(res.email, ownerEmail()), (m) => ownerMsg('error', 'Could not add the administrator.', m), explainOwner);
+  if (done) { $('owner-form').reset(); ownerMsg('info', 'Administrator added.', `${res.email} can now manage Mech Reminders after signing in with that Google account.`); }
+}
+
+async function importPreviousAdmins() {
+  if (!state.isOwner) return;
+  ownerMsg();
+  const done = await guarded(() => state.backend.addAdmins(core.PREVIOUS_ADMINS, ownerEmail()), (m) => ownerMsg('error', 'Could not import the administrators.', m), explainOwner);
+  if (done) ownerMsg('info', 'Previous administrators imported.', `${core.PREVIOUS_ADMINS.length} accounts keep their access.`);
+}
+
+async function restoreAdmin(email) {
+  if (!state.isOwner) return;
+  ownerMsg();
+  const done = await guarded(() => state.backend.restoreAdmin(email), (m) => ownerMsg('error', 'Could not restore access.', m), explainOwner);
+  if (done) ownerMsg('info', 'Access restored.', `${email} can manage Mech Reminders again.`);
+}
+
+function openOwnerConfirm(kind, email) {
+  state.ownerAction = { kind, email };
+  const revoke = kind === 'revoke';
+  $('owner-confirm-title').textContent = revoke ? 'Revoke administrator access?' : 'Remove this administrator?';
+  $('owner-confirm-text').textContent = revoke
+    ? `${email} will immediately lose the ability to create, edit, publish or delete records. You can restore access later.`
+    : `${email} will be removed from the list and lose access immediately. You can add the address again later.`;
+  $('oc-confirm').textContent = revoke ? 'Revoke access' : 'Remove admin';
+  $('owner-confirm-error').textContent = '';
+  $('owner-confirm-dialog').showModal();
+}
+
+async function confirmOwnerAction() {
+  const act = state.ownerAction;
+  if (!act || !state.isOwner) return;
+  const run = act.kind === 'revoke' ? () => state.backend.revokeAdmin(act.email, ownerEmail()) : () => state.backend.removeAdmin(act.email);
+  const ok = await guarded(run, (m) => { $('owner-confirm-error').textContent = m; }, explainOwner);
+  if (!ok) return;
+  $('owner-confirm-dialog').close();
+  ownerMsg('info', act.kind === 'revoke' ? 'Access revoked.' : 'Administrator removed.',
+    act.kind === 'revoke' ? `${act.email} can no longer create, edit, publish or delete records.` : `${act.email} was removed from the list.`);
+  state.ownerAction = null;
 }
 
 /* ================= sign in / out ================= */
@@ -442,6 +601,11 @@ async function init() {
   $('p-publish').addEventListener('click', publishFromPreview);
   $('c-cancel').addEventListener('click', () => $('confirm-dialog').close());
   $('c-delete').addEventListener('click', confirmDelete);
+  $('owner-form').addEventListener('submit', addAdmin);
+  $('owner-import-btn').addEventListener('click', importPreviousAdmins);
+  $('owner-import-dismiss').addEventListener('click', dismissImport);
+  $('oc-cancel').addEventListener('click', () => $('owner-confirm-dialog').close());
+  $('oc-confirm').addEventListener('click', confirmOwnerAction);
 
   try { state.backend = await createBackend(FIREBASE_CONFIG); }
   catch (e) {
