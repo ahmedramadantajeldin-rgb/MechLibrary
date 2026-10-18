@@ -90,10 +90,42 @@ export function subjectsOf(list) {
   return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
-/** f = { subject:'all'|name, type:'all'|TYPE, status:'all'|'upcoming'|'overdue'|'past', sort:'smart'|'deadline-asc'|'deadline-desc'|'subject' } */
+/** Stable identity of a subject (case / spacing insensitive). Selections are stored and compared by this key, never by display text. */
+export const subjectKey = norm;
+
+/** Options for the subject picker, generated from the records themselves: [{ key, label }] sorted by label.
+ *  Adding a record with a new subject adds an option automatically; nothing else needs to be edited. */
+export function subjectOptions(list) {
+  return subjectsOf(list).map((label) => ({ key: norm(label), label }));
+}
+
+/** The selection that actually applies right now: the chosen keys that still exist in the data, without duplicates.
+ *  An empty result means "All subjects". A saved choice whose subjects have all disappeared (e.g. unpublished) therefore
+ *  shows everything instead of an empty page, without erasing what the user saved. */
+export function resolveSubjects(selected, availableKeys) {
+  const avail = new Set(availableKeys);
+  return [...new Set((selected || []).map(norm))].filter((k) => avail.has(k));
+}
+
+/** Tick / untick one subject. Works on the effective selection, so it never leaves duplicates or stale keys behind.
+ *  Ticking a subject while "All subjects" is active starts a specific selection; unticking the last one, or ticking every
+ *  available subject, returns to "All subjects" ([]). */
+export function toggleSubject(selected, key, availableKeys) {
+  const k = norm(key);
+  const avail = availableKeys.map(norm);
+  if (!avail.includes(k)) return resolveSubjects(selected, avail);
+  const cur = resolveSubjects(selected, avail);
+  const next = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k];
+  return next.length >= avail.length ? [] : next;
+}
+
+/** f = { subjects:[key…] (empty = all), type:'all'|TYPE, status:'all'|'upcoming'|'overdue'|'past', sort:'smart'|'deadline-asc'|'deadline-desc'|'subject' }
+ *  (the older single-value form  subject:'all'|name  is still understood) */
 export function filterAndSort(list, f, now) {
+  const wanted = Array.isArray(f.subjects) ? f.subjects.map(norm).filter(Boolean)
+    : (f.subject && f.subject !== 'all' ? [norm(f.subject)] : []);
   const out = list.filter((s) =>
-    (f.subject === 'all' || norm(s.subject) === norm(f.subject)) &&
+    (!wanted.length || wanted.includes(norm(s.subject))) &&
     (f.type === 'all' || s.type === f.type) &&
     (f.status === 'all' || statusOf(s, now) === f.status));
   const rank = { upcoming: 0, overdue: 1, past: 2 };

@@ -49,7 +49,7 @@ export async function createBackend(config) {
   });
 
   return {
-    onAuth: (cb) => A.onAuthStateChanged(auth, (u) => cb(u ? { email: u.email || '', verified: u.emailVerified === true, name: u.displayName || '' } : null)),
+    onAuth: (cb) => A.onAuthStateChanged(auth, (u) => cb(u ? { uid: u.uid || '', email: u.email || '', verified: u.emailVerified === true, name: u.displayName || '' } : null)),
     signIn: () => A.signInWithPopup(auth, new A.GoogleAuthProvider()),
     signOut: () => A.signOut(auth),
 

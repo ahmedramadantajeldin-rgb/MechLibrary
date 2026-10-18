@@ -101,8 +101,8 @@ def check(name, cond, detail=''):
     results.append((bool(cond), name, detail))
     print(('PASS ' if cond else 'FAIL ') + name + (f'  [{detail}]' if (detail and not cond) else ''))
 
-def open_page(browser, path='reminders/', user=None, extra='', configured=True, viewport=None, grant=False, admins=None):
-    ctx = browser.new_context(viewport=viewport or {'width': 1280, 'height': 900})
+def open_page(browser, path='reminders/', user=None, extra='', configured=True, viewport=None, grant=False, admins=None, storage_state=None):
+    ctx = browser.new_context(viewport=viewport or {'width': 1280, 'height': 900}, storage_state=storage_state)
     page = ctx.new_page()
     errors = []
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
@@ -119,6 +119,158 @@ def open_page(browser, path='reminders/', user=None, extra='', configured=True, 
 
 def cards(page):
     return page.locator('#list .sub-card')
+
+# ---- subject picker helpers (multi-select dropdown) ----
+def open_picker(page):
+    if not page.locator('#flt-subject').evaluate('e => e.open'):
+        page.click('#flt-subject-btn')
+
+def pick_subject(page, label):          # tick / untick one subject by its visible name
+    open_picker(page)
+    page.locator('#flt-subject-list label', has_text=label).locator('input').click()
+
+def reset_subjects(page):
+    open_picker(page); page.click('#flt-subject-all')
+
+def picker_summary(page):
+    return page.inner_text('#flt-subject-text')
+
+def shown_subjects(page):
+    return sorted(set(page.eval_on_selector_all('#list .sub-card h3', 'h=>h.map(x=>x.textContent)')))
+
+
+USER_A = {'email': 'student.a@example.com', 'emailVerified': True, 'displayName': 'A', 'uid': 'uid-A'}
+USER_B = {'email': 'student.b@example.com', 'emailVerified': True, 'displayName': 'B', 'uid': 'uid-B'}
+ALL5 = ['<img src=x onerror="window.__xss=1">', 'Fluid Mechanics II', 'Heat Transfer', 'Mechanical Design II']
+LS_KEYS = "Object.keys(localStorage).filter(k=>k.startsWith('mechReminders.subjects.v1')).sort()"
+
+def sign_in_as(page, user):             # what Firebase does when the account changes in an open page
+    page.evaluate("u=>{__fb.user=u;__fb.authCbs.forEach(cb=>cb(u))}", user); page.wait_for_timeout(250)
+
+def subject_filter_tests(browser):
+    # ---------- 3b. Multi-subject selection (anonymous visitor) ----------
+    ctx, page, errs = open_page(browser); page.wait_for_selector('#list .sub-card')
+    check('3b default: "All subjects", every record shown', picker_summary(page) == 'All subjects' and cards(page).count() == 5 and page.is_checked('#flt-subject-all'))
+    open_picker(page)
+    labels = page.eval_on_selector_all('#flt-subject-list .ms-opt span', 'e=>e.map(x=>x.textContent)')
+    check('3b options are generated from the published data (4 subjects; the draft subject is not offered)', sorted(labels) == sorted(ALL5) and 'SECRET DRAFT' not in labels, str(labels))
+    check('3b no option is ticked while "All subjects" is active', page.locator('#flt-subject-list input:checked').count() == 0)
+    pick_subject(page, 'Heat Transfer')
+    check('3b one subject: only its records (2), summary shows its name, "All" unticked', cards(page).count() == 2 and shown_subjects(page) == ['Heat Transfer'] and picker_summary(page) == 'Heat Transfer' and not page.is_checked('#flt-subject-all'))
+    pick_subject(page, 'Fluid Mechanics II')
+    check('3b two subjects: records of both (3), summary "2 subjects"', cards(page).count() == 3 and shown_subjects(page) == ['Fluid Mechanics II', 'Heat Transfer'] and picker_summary(page) == '2 subjects')
+    pick_subject(page, 'Mechanical Design II')
+    check('3b three subjects: 4 records, summary "3 subjects"', cards(page).count() == 4 and picker_summary(page) == '3 subjects')
+    pick_subject(page, 'Heat Transfer')
+    check('3b unticking one updates the list at once and keeps the other two', cards(page).count() == 2 and shown_subjects(page) == ['Fluid Mechanics II', 'Mechanical Design II'] and page.locator('#flt-subject-list input:checked').count() == 2)
+    page.select_option('#flt-status', 'past')
+    check('3b combines with the status filter (closed + 2 subjects → 1)', cards(page).count() == 1 and shown_subjects(page) == ['Mechanical Design II'])
+    page.select_option('#flt-status', 'all'); page.select_option('#flt-type', 'Quiz'); pick_subject(page, 'Heat Transfer')
+    check('3b combines with the type filter (Quiz + Heat/Fluid/Mech → Heat quiz only)', cards(page).count() == 1 and page.locator('.sub-card[data-id=A]').count() == 1)
+    page.select_option('#flt-type', 'all')
+    for name in ('Heat Transfer', 'Fluid Mechanics II', 'Mechanical Design II'): pick_subject(page, name)
+    check('3b unticking the last subject returns to "All subjects" (5 records)', picker_summary(page) == 'All subjects' and cards(page).count() == 5 and page.is_checked('#flt-subject-all'))
+    for name in ALL5: pick_subject(page, name)
+    check('3b ticking every subject = "All subjects" (5 records, no stale partial state)', picker_summary(page) == 'All subjects' and cards(page).count() == 5 and page.locator('#flt-subject-list input:checked').count() == 0)
+    page.click('#flt-subject-all')
+    check('3b "All subjects" cannot be unticked into an empty selection', page.is_checked('#flt-subject-all') and cards(page).count() == 5)
+    pick_subject(page, 'Heat Transfer'); pick_subject(page, 'Fluid Mechanics II'); page.click('#flt-subject-reset')
+    check('3b "Reset to all subjects" shows everything and the button is disabled again', cards(page).count() == 5 and picker_summary(page) == 'All subjects' and page.is_disabled('#flt-subject-reset'))
+    check('3b reset also clears the saved entry', page.evaluate(LS_KEYS) == [], str(page.evaluate(LS_KEYS)))
+    pick_subject(page, 'Heat Transfer'); page.keyboard.press('Escape')
+    check('3b Escape closes the panel', not page.locator('#flt-subject').evaluate('e=>e.open') and cards(page).count() == 2)
+    open_picker(page); page.click('.tz-note')
+    check('3b clicking elsewhere closes the panel', not page.locator('#flt-subject').evaluate('e=>e.open'))
+    ctx.close()
+
+    # ---------- 3c. New subject appears without a reload ----------
+    ctx, page, errs = open_page(browser); page.wait_for_selector('#list .sub-card')
+    page.evaluate("""()=>{const ts=(ms)=>({__ts:ms,toMillis:()=>ms});const n=Date.now();
+      __fb.docs.push({id:'Z',data:{subject:'Thermodynamics',type:'Quiz',courseCode:'',description:'',attachments:[],published:true,deadline:ts(n+4*864e5),closesAt:ts(n+5*864e5)}});__fb.bump();}""")
+    page.wait_for_selector('.sub-card[data-id=Z]'); open_picker(page)
+    check('3c a newly published subject shows up as an option automatically', page.locator('#flt-subject-list .ms-opt', has_text='Thermodynamics').count() == 1)
+    pick_subject(page, 'Thermodynamics'); check('3c ...and can be selected', cards(page).count() == 1)
+    check('3c no console errors', not errs, str(errs)); ctx.close()
+
+    # ---------- 3d. Saved choice: reload, browser restart, stale / corrupt data ----------
+    ctx, page, errs = open_page(browser); page.wait_for_selector('#list .sub-card')
+    pick_subject(page, 'Heat Transfer'); pick_subject(page, 'Mechanical Design II')
+    page.reload(); page.wait_for_selector('#list .sub-card')
+    check('3d survives a page refresh (same 2 subjects, same 3 records)', picker_summary(page) == '2 subjects' and cards(page).count() == 3 and shown_subjects(page) == ['Heat Transfer', 'Mechanical Design II'])
+    open_picker(page)
+    check('3d the right boxes are ticked after the refresh', sorted(page.eval_on_selector_all('#flt-subject-list input:checked', 'e=>e.map(x=>x.value)')) == ['heat transfer', 'mechanical design ii'])
+    state = ctx.storage_state(); ctx.close()
+    ctx, page, errs = open_page(browser, storage_state=state); page.wait_for_selector('#list .sub-card')
+    check('3d survives closing and reopening the browser', picker_summary(page) == '2 subjects' and cards(page).count() == 3)
+    entries = page.evaluate("Object.fromEntries(" + LS_KEYS + ".map(k=>[k,localStorage.getItem(k)]))")
+    check('3d saved locally under one visitor entry holding only subject names (no e-mail / IP)', list(entries) == ['mechReminders.subjects.v1.visitor'] and '@' not in json.dumps(entries), str(entries))
+    check('3d nothing about this preference was written to Firestore', page.evaluate('globalThis.__fb.writes.length') == 0)
+    check('3d no console errors', not errs, str(errs)); ctx.close()
+
+    ctx, page, errs = open_page(browser, extra="localStorage.setItem('mechReminders.subjects.v1.visitor','{\"v\":1,\"subjects\":[\"a subject that no longer exists\"]}');"); page.wait_for_selector('#list .sub-card')
+    check('3d saved subject that no longer exists → shows everything (not an empty page)', cards(page).count() == 5 and picker_summary(page) == 'All subjects')
+    check('3d ...and the saved entry is not erased behind the user\'s back', 'no longer exists' in (page.evaluate("localStorage.getItem('mechReminders.subjects.v1.visitor')") or ''))
+    pick_subject(page, 'Heat Transfer')
+    check('3d the next change replaces the stale entry', page.evaluate("localStorage.getItem('mechReminders.subjects.v1.visitor')") == '{"v":1,"subjects":["heat transfer"]}')
+    ctx.close()
+    ctx, page, errs = open_page(browser, extra="localStorage.setItem('mechReminders.subjects.v1.visitor','{{{broken');"); page.wait_for_selector('#list .sub-card')
+    check('3d corrupt saved data → All subjects, no console errors', cards(page).count() == 5 and picker_summary(page) == 'All subjects' and not errs, str(errs)); ctx.close()
+    ctx, page, errs = open_page(browser, extra="Object.defineProperty(window,'localStorage',{get(){throw new Error('blocked')}});"); page.wait_for_selector('#list .sub-card')
+    pick_subject(page, 'Heat Transfer')
+    check('3d storage blocked by the browser → filter still works for this visit, no crash', cards(page).count() == 2 and not [e for e in errs if 'blocked' not in e], str(errs)); ctx.close()
+
+    # ---------- 3e. Separate users, logout, return ----------
+    ctx, page, errs = open_page(browser, user=USER_A); page.wait_for_selector('#list .sub-card')
+    check('3e signed-in user with nothing saved starts on "All subjects"', picker_summary(page) == 'All subjects' and cards(page).count() == 5)
+    pick_subject(page, 'Heat Transfer')
+    check('3e user A: choice saved under A\'s own uid key', page.evaluate(LS_KEYS) == ['mechReminders.subjects.v1.uid.uid-A'], str(page.evaluate(LS_KEYS)))
+    page.get_by_role('button', name='Sign out').click(); page.wait_for_selector('#list .sub-card')
+    check('3e after logout the saved choice is NOT deleted', 'mechReminders.subjects.v1.uid.uid-A' in page.evaluate(LS_KEYS))
+    check('3e after logout the visitor sees their own default (All), not A\'s choice', picker_summary(page) == 'All subjects' and cards(page).count() == 5)
+    pick_subject(page, 'Fluid Mechanics II'); pick_subject(page, 'Mechanical Design II')
+    sign_in_as(page, USER_B)
+    check('3e user B (same browser) starts on All subjects, A\'s and the visitor\'s choices are not applied', picker_summary(page) == 'All subjects' and cards(page).count() == 5)
+    pick_subject(page, 'Heat Transfer')
+    check('3e user B chose Heat Transfer only (2 records)', picker_summary(page) == 'Heat Transfer' and cards(page).count() == 2)
+    sign_in_as(page, USER_A)
+    check('3e switching back to A restores A\'s choice (Heat Transfer) — B did not overwrite it', picker_summary(page) == 'Heat Transfer' and cards(page).count() == 2)
+    pick_subject(page, 'Fluid Mechanics II')
+    sign_in_as(page, USER_B)
+    check('3e B still has only Heat Transfer after A changed theirs', picker_summary(page) == 'Heat Transfer' and cards(page).count() == 2)
+    sign_in_as(page, None)
+    check('3e visitor entry kept separately (Fluid + Mechanical Design)', picker_summary(page) == '2 subjects' and shown_subjects(page) == ['Fluid Mechanics II', 'Mechanical Design II'])
+    keys = page.evaluate(LS_KEYS)
+    check('3e exactly three entries: visitor, uid-A, uid-B', keys == ['mechReminders.subjects.v1.uid.uid-A', 'mechReminders.subjects.v1.uid.uid-B', 'mechReminders.subjects.v1.visitor'], str(keys))
+    dump = page.evaluate("Object.keys(localStorage).filter(k=>k.startsWith('mechReminders.subjects')).map(k=>k+localStorage.getItem(k)).join('|')")
+    check('3e no e-mail address stored in any preference entry', 'student.' not in dump and '@' not in dump, dump)
+    state = ctx.storage_state(); ctx.close()
+    ctx, page, errs = open_page(browser, user=USER_A, storage_state=state); page.wait_for_selector('#list .sub-card')
+    check('3e A returns in a later session (signed in at load): saved choice restored', picker_summary(page) == '2 subjects' and shown_subjects(page) == ['Fluid Mechanics II', 'Heat Transfer'])
+    check('3e no console errors in the user scenarios', not errs, str(errs)); ctx.close()
+
+    # ---------- 3f. Admin: preference is display-only ----------
+    OWNER_U = {**ADMIN1, 'uid': 'uid-owner'}
+    ctx, page, errs = open_page(browser, user=OWNER_U); page.wait_for_selector('#admin-list .admin-row')
+    pick_subject(page, 'Heat Transfer')
+    check('3f owner: the public list is filtered (2), the dashboard still lists every record incl. the draft (6)', cards(page).count() == 2 and page.locator('#admin-list .admin-row').count() == 6)
+    check('3f owner: access and Admin Management unaffected by the preference', page.locator('#owner-panel').is_visible() and 'Owner' in page.inner_text('#account'))
+    page.reload(); page.wait_for_selector('#admin-list .admin-row'); page.wait_for_selector('#list .sub-card')
+    check('3f owner: after refresh the dashboard (6 rows) and the saved filter (Heat Transfer, 2 records) are both there', page.locator('#admin-list .admin-row').count() == 6 and picker_summary(page) == 'Heat Transfer' and cards(page).count() == 2)
+    check('3f owner: preference stored under the owner uid, not under any role or e-mail; no console errors', page.evaluate(LS_KEYS) == ['mechReminders.subjects.v1.uid.uid-owner'] and not errs, str(errs))
+    ctx.close()
+
+    # ---------- 3g. Small screen ----------
+    ctx, page, errs = open_page(browser, viewport={'width': 375, 'height': 800}); page.wait_for_selector('#list .sub-card')
+    open_picker(page)
+    box = page.locator('#flt-subject .ms-panel').bounding_box()
+    ov = page.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
+    check('3g mobile 375: open picker fits the screen, no horizontal scroll', box and box['x'] >= 0 and box['x'] + box['width'] <= 375 and ov <= 0, f'{box} overflow={ov}')
+    page.screenshot(path='/home/claude/shots/picker-mobile.png')
+    ctx.close()
+    ctx, page, errs = open_page(browser, viewport={'width': 1280, 'height': 900}); page.wait_for_selector('#list .sub-card')
+    pick_subject(page, 'Heat Transfer'); pick_subject(page, 'Fluid Mechanics II'); page.screenshot(path='/home/claude/shots/picker-desktop-open.png')
+    page.keyboard.press('Escape'); page.screenshot(path='/home/claude/shots/picker-desktop-closed.png')
+    ctx.close()
 
 def run():
     with sync_playwright() as p:
@@ -180,10 +332,10 @@ def run():
         check('3  Firebase app initialized exactly once', page.evaluate('globalThis.__fb.inits') == 1)
         again = page.evaluate("""async()=>{const b=await import('./backend.js');const c=await import('./firebase-config.js');await b.createBackend(c.FIREBASE_CONFIG);await b.createBackend(c.FIREBASE_CONFIG);return globalThis.__fb.inits}""")
         check('3  creating the backend again reuses the app (no duplicate-app error)', again == 1, str(again))
-        page.select_option('#flt-subject', 'Heat Transfer')
+        pick_subject(page, 'Heat Transfer')
         check('3  filter by subject', cards(page).count() == 2)
         page.select_option('#flt-type', 'Midterm'); check('3  filter by type', cards(page).count() == 1)
-        page.select_option('#flt-subject', 'all'); page.select_option('#flt-type', 'all'); page.select_option('#flt-status', 'past')
+        reset_subjects(page); page.select_option('#flt-type', 'all'); page.select_option('#flt-status', 'past')
         check('3  filter by status', cards(page).count() == 1 and 'Mechanical Design II' in page.locator('#list').inner_text())
         page.select_option('#flt-status', 'all'); page.select_option('#flt-sort', 'subject')
         up = page.eval_on_selector_all('.group[data-group=upcoming] h3', 'h=>h.map(x=>x.textContent)')
@@ -194,6 +346,8 @@ def run():
         page.select_option('#flt-type', 'Quiz'); page.select_option('#flt-status', 'past')
         check('3  empty filter result message', page.locator('#empty').is_visible() and 'match' in page.inner_text('#empty'))
         check('3  public: no console errors', not errs, str(errs)); ctx.close()
+
+        subject_filter_tests(browser)
 
         # ---------- 4. Public cannot write / non-admin ----------
         ctx, page, errs = open_page(browser, user=OTHER); page.wait_for_selector('#list .sub-card')

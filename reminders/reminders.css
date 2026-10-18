@@ -80,11 +80,28 @@ main{padding-bottom:56px}
 /* Toolbar */
 .toolbar{display:grid;gap:12px;grid-template-columns:1fr;align-items:end}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
-.field>label,legend{font-size:.82rem;font-weight:700;color:var(--steel);letter-spacing:.02em}
+.field>label,.ms-label,legend{font-size:.82rem;font-weight:700;color:var(--steel);letter-spacing:.02em}
 select,input[type=text],input[type=url],input[type=email],input[type=datetime-local],textarea{width:100%;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem}
 textarea{min-height:84px;resize:vertical}
 select:focus,input:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(22,132,71,.2)}
 .tz-note{font-size:.85rem;color:var(--steel)}
+
+/* Subject picker: a compact multi-select that looks like the neighbouring selects (native <details>, so it works from the keyboard) */
+.ms{position:relative}
+.ms>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font-size:.95rem;cursor:pointer}
+.ms>summary::-webkit-details-marker{display:none}
+.ms>summary>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms>summary::after{content:"";flex:none;width:8px;height:8px;margin-top:-4px;border:solid var(--steel);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.ms[open]>summary::after{margin-top:4px;transform:rotate(225deg)}
+.ms>summary:focus-visible,.ms[open]>summary{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(22,132,71,.2)}
+.ms-panel{position:absolute;z-index:20;inset-inline:0;top:calc(100% + 4px);min-width:min(260px,calc(100vw - 40px));padding:8px;display:flex;flex-direction:column;gap:4px;max-height:min(60vh,360px);overflow-y:auto;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);box-shadow:var(--shadow-2)}
+#flt-subject-list{display:flex;flex-direction:column;gap:2px}
+.ms-opt{display:flex;gap:10px;align-items:center;min-height:44px;padding:6px 8px;border-radius:6px;font-size:.95rem;cursor:pointer}
+.ms-opt:hover{background:var(--tint)}
+.ms-opt input{width:20px;height:20px;flex:none;accent-color:var(--green)}
+.ms-opt span{min-width:0;overflow-wrap:anywhere}
+.ms-all{font-weight:700;border-bottom:1px solid var(--line);border-radius:6px 6px 0 0}
+.ms-panel .btn{align-self:flex-start;margin-top:4px}
 
 /* Panels */
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card)}

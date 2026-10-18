@@ -98,8 +98,7 @@ A `#` link only jumps to the top of the same page. It might be filled in by Java
 
 ## 7. Actions needed from you
 
-1. Review `mechhub-pwa.patch` (or the 4 files in `modified-files/`).
-   Apply: `git apply mechhub-pwa.patch` in a clean checkout, or `git apply --ignore-whitespace mechhub-pwa.patch` in your CRLF working copy — or copy the 4 files over yours.
+1. (Done) The PWA changes were applied to the repository root. The one-off delivery copies (`mechhub-pwa.patch` and `modified-files/`) were removed in the Mech Reminders cleanup; they were superseded by the files in the repository.
 2. **Approve** before anything is committed/pushed — I have not done it.
 3. After deploy: run the device checks in §5 and the DevTools/Lighthouse checks on the live URL.
 4. Verify the Back links in the 7 course repos with View Source and, if confirmed, add the snippet (course repos are yours to change).

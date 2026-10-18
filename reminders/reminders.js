@@ -6,6 +6,7 @@
 import * as core from './core.js';
 import { FIREBASE_CONFIG, isConfigured } from './firebase-config.js';
 import { createBackend } from './backend.js';
+import * as prefs from './preferences.js';
 
 const TICK_MS = 30 * 1000;
 const LS_SETTINGS = 'mechReminders.settings.v1';   // per-device notification preferences (not shared data)
@@ -33,7 +34,8 @@ const state = {
   admins: [], adminsLoaded: false, adminsError: false, unsubAdmins: null,       // the whole list (owner only)
   ownerAction: null,
   records: [], loaded: false, unsub: null,
-  filters: { subject: 'all', type: 'all', status: 'all', sort: 'smart' },
+  filters: { subjects: [], type: 'all', status: 'all', sort: 'smart' },       // subjects: selected subject keys, [] = All subjects
+  prefUid: undefined, subjectSig: '',                                           // whose saved subject choice is loaded · options currently drawn
   now: Date.now(), sig: '',
   editingId: null, publishId: null, deleteId: null, busy: false,
   settings: loadSettings()
@@ -94,6 +96,7 @@ function onAuth(user) {
   const gen = ++state.authGen;                       // callbacks from an earlier sign-in must never change this one
   stopAccessWatchers();
   state.user = user;
+  loadSubjectPrefs(user && user.uid);
   const verified = !!user && user.verified;
   state.isOwner = verified && core.normalizeEmail(user.email) === core.normalizeEmail(core.OWNER_EMAIL);
   state.isManager = false;
@@ -179,13 +182,62 @@ function fillSelect(sel, options, current) {
   sel.value = options.some(([v]) => v === current) ? current : options[0][0];
 }
 function renderFilters() {
-  const subjects = core.subjectsOf(published());
-  fillSelect($('flt-subject'), [['all', 'All subjects'], ...subjects.map((s) => [s, s])], state.filters.subject);
+  renderSubjectPicker();
   fillSelect($('flt-type'), [['all', 'All types'], ...core.TYPES.map((t) => [t, t])], state.filters.type);
-  state.filters.subject = $('flt-subject').value;
   state.filters.type = $('flt-type').value;
   $('flt-status').value = state.filters.status;
   $('flt-sort').value = state.filters.sort;
+}
+
+/* ---- subject picker (multi-select) ----
+ * Options come from the published records themselves. state.filters.subjects holds the chosen keys; [] means "All subjects".
+ * Every change is saved for this person right away (see preferences.js). */
+const subjectKeys = () => core.subjectOptions(published()).map((o) => o.key);
+const activeSubjects = () => core.resolveSubjects(state.filters.subjects, subjectKeys());   // what the list really filters by
+const activeFilters = () => ({ ...state.filters, subjects: activeSubjects() });
+
+function loadSubjectPrefs(uid) {
+  const id = uid || null;
+  if (state.prefUid === id) return;                  // same person as before: keep the in-memory choice (storage may be unavailable)
+  state.prefUid = id;
+  state.filters.subjects = prefs.loadSubjects(id);   // never saved → [] → All subjects
+}
+
+function setSubjects(next) {
+  state.filters.subjects = next;
+  prefs.saveSubjects(state.prefUid, next);
+  renderSubjectPicker();
+  renderList();
+}
+
+function renderSubjectPicker() {
+  const options = core.subjectOptions(published());
+  const sig = options.map((o) => o.key).join('\u0001');
+  const list = $('flt-subject-list');
+  if (sig !== state.subjectSig) {                    // rebuild only when the set of subjects changed, so an open panel is not disturbed
+    state.subjectSig = sig;
+    list.replaceChildren(...options.map((o) => h('label', { class: 'ms-opt' }, h('input', { type: 'checkbox', value: o.key }), h('span', {}, o.label))));
+  }
+  const active = new Set(activeSubjects());
+  list.querySelectorAll('input').forEach((i) => { i.checked = active.has(i.value); });
+  $('flt-subject-all').checked = active.size === 0;
+  $('flt-subject-reset').disabled = active.size === 0 && state.filters.subjects.length === 0;
+  const names = options.filter((o) => active.has(o.key)).map((o) => o.label);
+  $('flt-subject-text').textContent = !names.length ? 'All subjects' : names.length === 1 ? names[0] : `${names.length} subjects`;
+  $('flt-subject-empty').hidden = options.length > 0;
+}
+
+function wireSubjectPicker() {
+  const box = $('flt-subject'), btn = $('flt-subject-btn');
+  $('flt-subject-list').addEventListener('change', (e) => {
+    const input = e.target.closest('input[type=checkbox]');
+    if (input) setSubjects(core.toggleSubject(state.filters.subjects, input.value, subjectKeys()));
+  });
+  $('flt-subject-all').addEventListener('change', () => setSubjects([]));      // "All subjects" is never left unticked with nothing else chosen
+  $('flt-subject-reset').addEventListener('click', () => setSubjects([]));
+  document.addEventListener('click', (e) => { if (box.open && !box.contains(e.target)) box.open = false; });
+  box.addEventListener('keydown', (e) => { if (e.key === 'Escape' && box.open) { box.open = false; btn.focus(); } });
+  box.addEventListener('focusout', (e) => { if (box.open && e.relatedTarget && !box.contains(e.relatedTarget)) box.open = false; });
 }
 
 const GROUPS = [
@@ -199,7 +251,7 @@ function renderList() {
   list.replaceChildren();
   empty.hidden = true;
   if (!state.loaded) { list.append(h('p', { class: 'empty', role: 'status' }, 'Loading deadlines…')); return; }
-  const items = core.filterAndSort(published(), state.filters, state.now);
+  const items = core.filterAndSort(published(), activeFilters(), state.now);
   if (!items.length) {
     empty.textContent = published().length ? 'No submissions match these filters.' : 'No deadlines have been published yet.';
     empty.hidden = false;
@@ -614,7 +666,7 @@ async function init() {
   $('board').hidden = false;
   $('f-type').replaceChildren(...typeOptions());
   const f = state.filters;
-  $('flt-subject').addEventListener('change', (e) => { f.subject = e.target.value; renderList(); });
+  wireSubjectPicker();
   $('flt-type').addEventListener('change', (e) => { f.type = e.target.value; renderList(); });
   $('flt-status').addEventListener('change', (e) => { f.status = e.target.value; renderList(); });
   $('flt-sort').addEventListener('change', (e) => { f.sort = e.target.value; renderList(); });

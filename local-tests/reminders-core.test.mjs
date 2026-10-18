@@ -218,3 +218,62 @@ test('no hard-coded administrator list remains in the site code: the only e-mail
     if (f !== 'core.js') assert.deepEqual(found.filter((e) => e !== 'name@gmail.com'), [], `${f} must not contain any administrator e-mail (only core.js may)`);
   }
 });
+
+/* ---------- multi-subject selection ---------- */
+const SUBJ = [
+  { id: '1', subject: 'Heat Transfer', type: 'Quiz', deadline: Date.parse('2026-03-01T10:00:00Z'), closesAt: Date.parse('2026-03-01T12:00:00Z') },
+  { id: '2', subject: 'heat  transfer'.replace('  ', ' '), type: 'Midterm', deadline: Date.parse('2026-03-02T10:00:00Z'), closesAt: Date.parse('2026-03-02T12:00:00Z') },
+  { id: '3', subject: 'Fluid Mechanics II', type: 'Quiz', deadline: Date.parse('2026-03-03T10:00:00Z'), closesAt: Date.parse('2026-03-03T12:00:00Z') },
+  { id: '4', subject: 'Mechanical Design II', type: 'Assignment', deadline: Date.parse('2026-03-04T10:00:00Z'), closesAt: Date.parse('2026-03-04T12:00:00Z') },
+  { id: '5', subject: 'Thermodynamics', type: 'Quiz', deadline: Date.parse('2026-03-05T10:00:00Z'), closesAt: Date.parse('2026-03-05T12:00:00Z') }
+];
+const NOW0 = Date.parse('2026-02-01T00:00:00Z');
+const ids = (f) => c.filterAndSort(SUBJ, { type: 'all', status: 'all', sort: 'deadline-asc', ...f }, NOW0).map((x) => x.id);
+
+test('subjectOptions: generated from the data, one option per subject (case-insensitive), sorted', () => {
+  assert.deepEqual(c.subjectOptions(SUBJ), [
+    { key: 'fluid mechanics ii', label: 'Fluid Mechanics II' }, { key: 'heat transfer', label: 'Heat Transfer' },
+    { key: 'mechanical design ii', label: 'Mechanical Design II' }, { key: 'thermodynamics', label: 'Thermodynamics' }]);
+  assert.deepEqual(c.subjectOptions([]), []);
+  const more = [...SUBJ, { id: '6', subject: 'Machine Elements', type: 'Quiz', deadline: 1, closesAt: 2 }];
+  assert.ok(c.subjectOptions(more).some((o) => o.key === 'machine elements'), 'a new subject appears without editing any list');
+});
+
+test('filterAndSort: several subjects at once; one; none (= all); all of them', () => {
+  assert.deepEqual(ids({ subjects: ['heat transfer', 'thermodynamics'] }), ['1', '2', '5']);
+  assert.deepEqual(ids({ subjects: ['fluid mechanics ii'] }), ['3']);
+  assert.deepEqual(ids({ subjects: [] }), ['1', '2', '3', '4', '5']);
+  assert.deepEqual(ids({ subjects: c.subjectOptions(SUBJ).map((o) => o.key) }), ['1', '2', '3', '4', '5']);
+  assert.deepEqual(ids({ subjects: ['HEAT TRANSFER ', 'heat transfer'] }), ['1', '2'], 'duplicates and odd casing change nothing');
+});
+
+test('filterAndSort: subjects combine with type and status; the older single-subject form still works', () => {
+  assert.deepEqual(ids({ subjects: ['heat transfer', 'fluid mechanics ii'], type: 'Quiz' }), ['1', '3']);
+  assert.deepEqual(ids({ subjects: ['heat transfer', 'mechanical design ii'], status: 'upcoming' }), ['1', '2', '4']);
+  assert.deepEqual(ids({ subject: 'Thermodynamics' }), ['5']);
+  assert.deepEqual(ids({ subject: 'all' }), ['1', '2', '3', '4', '5']);
+});
+
+test('resolveSubjects: drops unknown keys and duplicates; [] means all', () => {
+  const avail = ['a', 'b', 'c'];
+  assert.deepEqual(c.resolveSubjects(['b', 'B ', 'zzz', 'a'], avail), ['b', 'a']);
+  assert.deepEqual(c.resolveSubjects(['zzz'], avail), []);
+  assert.deepEqual(c.resolveSubjects(undefined, avail), []);
+  assert.deepEqual(c.resolveSubjects(['a'], []), []);
+});
+
+test('toggleSubject: select one, add more, remove one without losing the rest, last removal → all, everything ticked → all', () => {
+  const avail = ['a', 'b', 'c', 'd'];
+  let sel = [];
+  sel = c.toggleSubject(sel, 'b', avail); assert.deepEqual(sel, ['b']);
+  sel = c.toggleSubject(sel, 'd', avail); assert.deepEqual(sel, ['b', 'd']);
+  sel = c.toggleSubject(sel, 'a', avail); assert.deepEqual(sel, ['b', 'd', 'a']);
+  sel = c.toggleSubject(sel, 'b', avail); assert.deepEqual(sel, ['d', 'a'], 'unticking one keeps the others');
+  sel = c.toggleSubject(sel, 'c', avail); assert.deepEqual(sel, ['d', 'a', 'c']);
+  sel = c.toggleSubject(sel, 'b', avail); assert.deepEqual(sel, [], 'every subject ticked = All subjects');
+  sel = c.toggleSubject(['d'], 'd', avail); assert.deepEqual(sel, [], 'unticking the only one = All subjects');
+  assert.deepEqual(c.toggleSubject(['a'], 'a ', avail), [], 'key is normalised');
+  assert.deepEqual(c.toggleSubject(['a', 'a'], 'b', avail), ['a', 'b'], 'duplicates cannot accumulate');
+  assert.deepEqual(c.toggleSubject(['a'], 'nope', avail), ['a'], 'unknown subject is ignored');
+  assert.deepEqual(c.toggleSubject(['gone', 'b'], 'c', avail), ['b', 'c'], 'stale saved keys are dropped on the next change');
+});

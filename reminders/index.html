@@ -114,7 +114,16 @@
 
     <section id="board" hidden aria-label="Submissions">
       <div class="toolbar" role="group" aria-label="Filter and sort">
-        <div class="field"><label for="flt-subject">Subject</label><select id="flt-subject"></select></div>
+        <div class="field"><span class="ms-label" id="flt-subject-label">Subjects</span>
+          <details class="ms" id="flt-subject">
+            <summary id="flt-subject-btn" aria-labelledby="flt-subject-label flt-subject-text"><span id="flt-subject-text">All subjects</span></summary>
+            <div class="ms-panel" role="group" aria-labelledby="flt-subject-label">
+              <label class="ms-opt ms-all"><input type="checkbox" id="flt-subject-all" checked><span>All subjects</span></label>
+              <div id="flt-subject-list"></div>
+              <p class="hint" id="flt-subject-empty" hidden>Subjects appear here once deadlines are published.</p>
+              <button type="button" class="btn btn-outline btn-sm" id="flt-subject-reset">Reset to all subjects</button>
+            </div>
+          </details></div>
         <div class="field"><label for="flt-type">Submission type</label><select id="flt-type"></select></div>
         <div class="field"><label for="flt-status">Status</label>
           <select id="flt-status">
