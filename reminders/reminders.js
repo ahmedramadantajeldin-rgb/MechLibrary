@@ -308,34 +308,61 @@ function updateTimeLabels() {
 
 /* ================= admin dashboard ================= */
 function fillAdminFilters() {
+  const af = state.adminFilters;
+
+  // Subject dropdown — derived from actual records, case-insensitive deduplication
   const subjects = core.subjectsOf(state.records);
   const subjectSel = $('adm-subject');
-  const curSubj = subjectSel.value;
   subjectSel.replaceChildren(h('option', { value: 'all' }, 'All subjects'), ...subjects.map((s) => h('option', { value: s }, s)));
-  subjectSel.value = subjects.includes(curSubj) ? curSubj : 'all';
-  state.adminFilters.subject = subjectSel.value;
+  // Restore the saved selection (case-insensitive match against current options)
+  const matchSubj = subjects.find((s) => s.trim().toLowerCase() === (af.subject || '').trim().toLowerCase());
+  subjectSel.value = matchSubj || 'all';
+  af.subject = subjectSel.value;                                       // sync state with what the DOM actually holds
+
+  // Type dropdown — all canonical types
   const typeSel = $('adm-type');
-  const curType = typeSel.value;
   typeSel.replaceChildren(h('option', { value: 'all' }, 'All types'), ...core.TYPES.map((t) => h('option', { value: t }, t)));
-  typeSel.value = core.TYPES.includes(curType) ? curType : 'all';
-  state.adminFilters.type = typeSel.value;
-  $('adm-status').value = state.adminFilters.status;
-  $('adm-sort').value = state.adminFilters.sort;
+  typeSel.value = core.TYPES.includes(af.type) ? af.type : 'all';
+  af.type = typeSel.value;
+
+  // Status and sort — these never change their options, just restore the value
+  $('adm-status').value = af.status;
+  $('adm-sort').value = af.sort;
 }
 function adminFilteredRecords() {
   const f = state.adminFilters;
+  const now = state.now;
   let rows = [...state.records];
-  if (f.subject && f.subject !== 'all') rows = rows.filter((r) => r.subject.trim().toLowerCase() === f.subject.trim().toLowerCase());
+
+  // Subject filter (case-insensitive)
+  if (f.subject && f.subject !== 'all') {
+    const wantedSubj = f.subject.trim().toLowerCase();
+    rows = rows.filter((r) => (r.subject || '').trim().toLowerCase() === wantedSubj);
+  }
+
+  // Type filter (exact match — types are canonical strings)
   if (f.type && f.type !== 'all') rows = rows.filter((r) => r.type === f.type);
+
+  // Status filter (published/draft are separate from time-based statuses)
   if (f.status === 'published') rows = rows.filter((r) => r.published);
   else if (f.status === 'draft') rows = rows.filter((r) => !r.published);
-  else if (f.status && f.status !== 'all') rows = rows.filter((r) => core.statusOf(r, state.now) === f.status);
+  else if (f.status && f.status !== 'all') rows = rows.filter((r) => core.statusOf(r, now) === f.status);
+
+  // Free-text search (subject, courseCode, type, description)
   if (f.search) rows = rows.filter((r) => core.searchMatches(r, f.search));
+
+  // Sorting
   const by = {
-    'deadline-asc': (a, b) => a.deadline - b.deadline, 'deadline-desc': (a, b) => b.deadline - a.deadline,
+    'deadline-asc': (a, b) => (a.deadline || 0) - (b.deadline || 0),
+    'deadline-desc': (a, b) => (b.deadline || 0) - (a.deadline || 0),
     'newest': (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
-    'subject': (a, b) => a.subject.localeCompare(b.subject) || a.deadline - b.deadline,
-    'smart': (a, b) => { const sa = core.statusOf(a, state.now), sb = core.statusOf(b, state.now), rank = { upcoming: 0, overdue: 1, past: 2 }; if (sa !== sb) return rank[sa] - rank[sb]; return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline; }
+    'subject': (a, b) => (a.subject || '').localeCompare(b.subject || '') || (a.deadline || 0) - (b.deadline || 0),
+    'smart': (a, b) => {
+      const sa = core.statusOf(a, now), sb = core.statusOf(b, now);
+      const rank = { upcoming: 0, overdue: 1, past: 2 };
+      if (sa !== sb) return (rank[sa] ?? 3) - (rank[sb] ?? 3);
+      return sa === 'past' ? (b.deadline || 0) - (a.deadline || 0) : (a.deadline || 0) - (b.deadline || 0);
+    }
   };
   return rows.sort(by[f.sort] || by.smart);
 }
