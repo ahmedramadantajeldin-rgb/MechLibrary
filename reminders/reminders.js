@@ -1,4 +1,4 @@
-/* Mech Reminders — UI.
+﻿/* Mech Reminders — UI.
  * Public visitors read PUBLISHED records. Administrators get the dashboard. Who is an administrator is NOT written
  * in this file: the owner (one fixed account) manages a list stored in Firestore (collection "admins"), and this page
  * simply listens to its own entry in that list. Everything here only decides what the page SHOWS; the real gate is
@@ -305,22 +305,56 @@ function updateTimeLabels() {
 }
 
 /* ================= admin dashboard ================= */
+function fillAdminFilters() {
+  const subjects = core.subjectsOf(state.records);
+  const subjectSel = $('adm-subject');
+  const curSubj = subjectSel.value;
+  subjectSel.replaceChildren(h('option', { value: 'all' }, 'All subjects'), ...subjects.map((s) => h('option', { value: s }, s)));
+  subjectSel.value = subjects.includes(curSubj) ? curSubj : 'all';
+  state.adminFilters.subject = subjectSel.value;
+  const typeSel = $('adm-type');
+  const curType = typeSel.value;
+  typeSel.replaceChildren(h('option', { value: 'all' }, 'All types'), ...core.TYPES.map((t) => h('option', { value: t }, t)));
+  typeSel.value = core.TYPES.includes(curType) ? curType : 'all';
+  state.adminFilters.type = typeSel.value;
+  $('adm-status').value = state.adminFilters.status;
+  $('adm-sort').value = state.adminFilters.sort;
+}
+function adminFilteredRecords() {
+  const f = state.adminFilters;
+  let rows = [...state.records];
+  if (f.subject && f.subject !== 'all') rows = rows.filter((r) => r.subject.trim().toLowerCase() === f.subject.trim().toLowerCase());
+  if (f.type && f.type !== 'all') rows = rows.filter((r) => r.type === f.type);
+  if (f.status === 'published') rows = rows.filter((r) => r.published);
+  else if (f.status === 'draft') rows = rows.filter((r) => !r.published);
+  else if (f.status && f.status !== 'all') rows = rows.filter((r) => core.statusOf(r, state.now) === f.status);
+  if (f.search) rows = rows.filter((r) => core.searchMatches(r, f.search));
+  const by = {
+    'deadline-asc': (a, b) => a.deadline - b.deadline, 'deadline-desc': (a, b) => b.deadline - a.deadline,
+    'newest': (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+    'subject': (a, b) => a.subject.localeCompare(b.subject) || a.deadline - b.deadline,
+    'smart': (a, b) => { const sa = core.statusOf(a, state.now), sb = core.statusOf(b, state.now), rank = { upcoming: 0, overdue: 1, past: 2 }; if (sa !== sb) return rank[sa] - rank[sb]; return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline; }
+  };
+  return rows.sort(by[f.sort] || by.smart);
+}
 function renderAdmin() {
   const panel = $('admin');
   panel.hidden = !state.isAdmin;
   if (!state.isAdmin) { clearAdminDom(); return; }
+  fillAdminFilters();
   const ul = $('admin-list');
   ul.replaceChildren();
   if (!state.loaded) { ul.append(h('li', { class: 'hint' }, 'Loading…')); return; }
-  const rows = [...state.records].sort((a, b) => b.deadline - a.deadline);
-  if (!rows.length) ul.append(h('li', { class: 'hint' }, 'No records yet. Use “New submission” to add the first one.'));
+  const rows = adminFilteredRecords();
+  if (!rows.length) { ul.append(h('li', { class: 'hint' }, state.records.length ? 'No records match these filters.' : 'No records yet. Use "New submission" to add the first one.')); return; }
   for (const r of rows) {
     const st = { upcoming: 'Upcoming', overdue: 'Deadline passed, still open', past: 'Closed' }[core.statusOf(r, state.now)];
+    const closesText = r.closesAt != null ? ` · Closes ${core.formatCairo(r.closesAt)}` : '';
     ul.append(h('li', { class: 'admin-row', 'data-id': r.id },
       h('div', {},
-        h('div', { class: 'title' }, r.subject, ' ', h('span', { class: 'badge type' }, r.type), ' ',
+        h('div', { class: 'title' }, r.subject, r.courseCode ? ` (${r.courseCode})` : '', ' ', h('span', { class: 'badge type' }, r.type), ' ',
           h('span', { class: r.published ? 'badge pub' : 'badge draft' }, r.published ? 'Published' : 'Draft')),
-        h('div', { class: 'sub' }, `Deadline ${core.formatCairo(r.deadline)} · Closes ${core.formatCairo(r.closesAt)} · ${r.attachments.length} PDF link${r.attachments.length === 1 ? '' : 's'} · ${st}`)),
+        h('div', { class: 'sub' }, `Deadline ${core.formatCairo(r.deadline)}${closesText} · ${r.attachments.length} PDF link${r.attachments.length === 1 ? '' : 's'} · ${st}`)),
       h('div', { class: 'admin-actions' },
         h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'edit', onclick: () => openForm(r) }, 'Edit'),
         h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'preview', onclick: () => openPreview(r, {}) }, 'Preview'),
@@ -330,7 +364,6 @@ function renderAdmin() {
         h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'delete', onclick: () => openDelete(r) }, 'Delete'))));
   }
 }
-
 /* After sign-out (or for non-admins) nothing from the admin side may linger in the page: drafts, form values, previews. */
 function clearAdminDom() {
   ['form-dialog', 'preview-dialog', 'confirm-dialog'].forEach((id) => { const d = $(id); if (d.open) d.close(); });
