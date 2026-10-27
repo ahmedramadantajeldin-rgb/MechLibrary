@@ -216,3 +216,83 @@ dialog::backdrop{background:rgba(21,21,21,.6)}
   html{scroll-behavior:auto}
   *,*::before,*::after{transition:none!important;animation:none!important}
 }
+
+
+/* ====== ENHANCEMENT ADDITIONS ====== */
+
+/* Screen-reader only (visually hidden but accessible) */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Search bar */
+.search-bar{margin-top:8px}
+.search-bar input[type=search]{width:100%;min-height:44px;padding:8px 14px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem}
+.search-bar input[type=search]:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(22,132,71,.2)}
+input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;height:18px;width:18px;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%234F5651' stroke-width='2' stroke-linecap='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M18 6L6 18M6 6l12 12'/%3E%3C/svg%3E") center/contain no-repeat;cursor:pointer}
+
+/* Admin toolbar (same grid as student toolbar) */
+.admin-toolbar{margin-top:8px;margin-bottom:8px}
+.admin-toolbar input[type=search]{width:100%;min-height:44px;padding:8px 14px;border:1.5px solid var(--line);border-radius:var(--radius-btn);background:var(--surface);color:var(--ink);font:inherit;font-size:.95rem}
+.admin-toolbar input[type=search]:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(22,132,71,.2)}
+
+/* Header actions (nav link + notification bell) */
+.header-actions{display:flex;align-items:center;gap:10px}
+
+/* Notification bell */
+.notif-bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--dark-line);border-radius:var(--radius-btn);background:transparent;color:var(--on-dark);cursor:pointer;transition:background .2s}
+.notif-bell:hover{background:var(--dark-hair)}
+.notif-bell svg{width:22px;height:22px}
+.notif-badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:100px;background:var(--red);color:#fff;font-size:.7rem;font-weight:800;line-height:18px;text-align:center}
+
+/* Notification center panel */
+.notif-center{position:fixed;top:60px;right:0;z-index:30;width:min(420px,100vw);max-height:calc(100dvh - 60px);display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--line);box-shadow:-4px 0 24px rgba(0,0,0,.12);overflow:hidden}
+.notif-center-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.notif-center-head h2{font-size:1.1rem;margin:0}
+.notif-list{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1}
+.notif-list li{display:flex;flex-direction:column;gap:4px;padding:14px 18px;border-bottom:1px solid var(--line);font-size:.92rem;cursor:default;transition:background .15s}
+.notif-list li:hover{background:var(--paper)}
+.notif-list li.unread{background:var(--tint);border-left:3px solid var(--green)}
+.notif-list .notif-title{font-weight:700;color:var(--ink)}
+.notif-list .notif-body{color:var(--steel)}
+.notif-list .notif-time{font-size:.8rem;color:var(--on-dark-3)}
+.notif-list .notif-actions{display:flex;gap:8px;margin-top:4px}
+
+/* Sound settings row */
+.sound-row{display:flex;align-items:center;gap:10px}
+.sound-row select{flex:1;min-height:36px}
+
+/* Personal tasks */
+#tasks-section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card)}
+#tasks-section>summary{cursor:pointer;padding:14px 18px;font-weight:700;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#tasks-section>summary::-webkit-details-marker{display:none}
+#tasks-section>summary::after{content:"+";font-size:1.4rem;line-height:1;color:var(--green)}
+#tasks-section[open]>summary::after{content:"−"}
+.task-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.task-row{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-btn);background:var(--paper)}
+.task-row.completed{opacity:.6}
+.task-row .task-head{display:flex;align-items:flex-start;gap:10px}
+.task-row .task-check{width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--green);cursor:pointer}
+.task-row .task-title{font-weight:700;flex:1;overflow-wrap:anywhere}
+.task-row .task-title.done{text-decoration:line-through;color:var(--steel)}
+.task-row .task-meta{font-size:.85rem;color:var(--steel);padding-left:32px}
+.task-row .task-notes{font-size:.9rem;color:var(--steel);white-space:pre-line;padding-left:32px;overflow-wrap:anywhere}
+.task-row .admin-actions{padding-left:32px}
+
+/* Closing time toggle area */
+#f-closes-wrap .check{font-weight:600}
+
+/* Cards without closing time */
+.dates-single{display:flex;gap:8px;align-items:baseline;font-size:.93rem}
+.dates-single dt{font-weight:700;color:var(--steel)}
+.dates-single dd{margin:0;overflow-wrap:anywhere}
+
+@media (min-width:600px){
+  .admin-toolbar{grid-template-columns:repeat(2,1fr)}
+  .task-row{flex-direction:row;align-items:center;justify-content:space-between}
+  .task-row>div:first-child{flex:1 1 auto;min-width:0}
+}
+@media (min-width:980px){
+  .admin-toolbar{grid-template-columns:repeat(5,1fr)}
+}
+@media (max-width:420px){
+  .notif-center{width:100vw}
+}

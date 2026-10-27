@@ -26,18 +26,24 @@ export async function createBackend(config) {
     return {
       id: d.id,
       subject: String(x.subject || ''), type: x.type || '', courseCode: x.courseCode || '', description: x.description || '',
-      deadline: ms(x.deadline), closesAt: ms(x.closesAt),
+      deadline: ms(x.deadline), closesAt: x.closesAt ? ms(x.closesAt) : null,
       attachments: Array.isArray(x.attachments) ? x.attachments : [],
-      published: x.published === true
+      published: x.published === true,
+      createdAt: ms(x.createdAt)
     };
   };
-  const usable = (r) => r.deadline != null && r.closesAt != null;     // ignore malformed documents instead of crashing
+  const usable = (r) => r.deadline != null;                           // closesAt is now optional
   const watch = (q, ok, err) => F.onSnapshot(q, (snap) => ok(snap.docs.map(toRecord).filter(usable)), err);
-  const toDoc = (v) => ({
-    subject: v.subject, type: v.type, courseCode: v.courseCode, description: v.description,
-    deadline: F.Timestamp.fromMillis(v.deadline), closesAt: F.Timestamp.fromMillis(v.closesAt),
-    attachments: v.attachments, published: v.published
-  });
+  const toDoc = (v, isUpdate = false) => {
+    const doc = {
+      subject: v.subject, type: v.type, courseCode: v.courseCode, description: v.description,
+      deadline: F.Timestamp.fromMillis(v.deadline),
+      attachments: v.attachments, published: v.published
+    };
+    if (v.closesAt != null) doc.closesAt = F.Timestamp.fromMillis(v.closesAt);
+    else if (isUpdate) doc.closesAt = F.deleteField();                // remove stale closing time
+    return doc;
+  };
   const toAdmin = (d) => {
     const x = d.data();
     return { email: String(x.email || d.id).toLowerCase(), active: x.active === true, canManage: x.canManageAdmins === true, addedBy: x.addedBy || '', createdAt: ms(x.createdAt), revokedAt: ms(x.revokedAt) };
@@ -57,7 +63,7 @@ export async function createBackend(config) {
     watchAll: (ok, err) => watch(col, ok, err),                       // admins only (enforced by firestore.rules)
 
     create: (v) => F.addDoc(col, { ...toDoc(v), createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() }),
-    update: (id, v) => F.updateDoc(ref(id), { ...toDoc(v), updatedAt: F.serverTimestamp() }),
+    update: (id, v) => F.updateDoc(ref(id), { ...toDoc(v, true), updatedAt: F.serverTimestamp() }),
     setPublished: (id, published) => F.updateDoc(ref(id), { published, updatedAt: F.serverTimestamp() }),
     remove: (id) => F.deleteDoc(ref(id)),
 
@@ -81,6 +87,37 @@ export async function createBackend(config) {
       { active: false, updatedAt: F.serverTimestamp(), revokedAt: F.serverTimestamp(), revokedBy: actor }),
     restoreAdmin: (email) => F.updateDoc(adminRef(email),
       { active: true, updatedAt: F.serverTimestamp(), revokedAt: F.deleteField(), revokedBy: F.deleteField() }),
-    removeAdmin: (email) => F.deleteDoc(adminRef(email))
+    removeAdmin: (email) => F.deleteDoc(adminRef(email)),
+
+    /* ---- user preferences and personal tasks (keyed by Firebase UID, never e-mail) ---- */
+    watchPreferences: (uid, ok, err) => F.onSnapshot(F.doc(db, 'userPreferences', uid),
+      (snap) => ok(snap.exists() ? snap.data() : null), err),
+    savePreferences: (uid, data) => F.setDoc(F.doc(db, 'userPreferences', uid),
+      { ...data, updatedAt: F.serverTimestamp() }, { merge: true }),
+
+    watchTasks: (uid, ok, err) => F.onSnapshot(F.collection(db, 'personalTasks', uid, 'tasks'),
+      (snap) => ok(snap.docs.map((d) => {
+        const x = d.data();
+        return { id: d.id, title: x.title || '', subject: x.subject || '', datetime: ms(x.datetime),
+          notes: x.notes || '', completed: x.completed === true,
+          reminderLeads: Array.isArray(x.reminderLeads) ? x.reminderLeads : [], createdAt: ms(x.createdAt) };
+      })), err),
+    createTask: (uid, task) => F.addDoc(F.collection(db, 'personalTasks', uid, 'tasks'), {
+      title: task.title || '', subject: task.subject || '', notes: task.notes || '',
+      datetime: task.datetime ? F.Timestamp.fromMillis(task.datetime) : null,
+      completed: false, reminderLeads: task.reminderLeads || [],
+      createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp()
+    }),
+    updateTask: (uid, taskId, data) => {
+      const u = { updatedAt: F.serverTimestamp() };
+      if (data.title !== undefined) u.title = data.title;
+      if (data.subject !== undefined) u.subject = data.subject;
+      if (data.notes !== undefined) u.notes = data.notes;
+      if (data.completed !== undefined) u.completed = data.completed === true;
+      if (data.reminderLeads !== undefined) u.reminderLeads = data.reminderLeads;
+      if (data.datetime !== undefined) u.datetime = data.datetime ? F.Timestamp.fromMillis(data.datetime) : null;
+      return F.updateDoc(F.doc(db, 'personalTasks', uid, 'tasks', taskId), u);
+    },
+    deleteTask: (uid, taskId) => F.deleteDoc(F.doc(db, 'personalTasks', uid, 'tasks', taskId))
   };
 }

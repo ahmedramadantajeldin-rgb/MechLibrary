@@ -27,6 +27,7 @@ const h = (tag, attrs = {}, ...kids) => {
 const svg = (paths) => { const t = document.createElement('template'); t.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`; return t.content.firstChild; };
 const PDF_ICON = '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>';
 const CLOCK_ICON = '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';
+const CHECK_ICON = '<polyline points="20 6 9 17 4 12"/>';
 
 const state = {
   backend: null, user: null, isAdmin: false, isOwner: false, isManager: false,   // manager = admin allowed to manage administrators
@@ -34,11 +35,15 @@ const state = {
   admins: [], adminsLoaded: false, adminsError: false, unsubAdmins: null,       // the whole list (owner only)
   ownerAction: null,
   records: [], loaded: false, unsub: null,
-  filters: { subjects: [], type: 'all', status: 'all', sort: 'smart' },       // subjects: selected subject keys, [] = All subjects
+  filters: { subjects: [], type: 'all', status: 'all', sort: 'smart', search: '' },
+  adminFilters: { subject: 'all', type: 'all', status: 'all', sort: 'smart', search: '' },
   prefUid: undefined, subjectSig: '',                                           // whose saved subject choice is loaded · options currently drawn
   now: Date.now(), sig: '',
   editingId: null, publishId: null, deleteId: null, busy: false,
-  settings: loadSettings()
+  settings: loadSettings(),
+  // Personal tasks
+  tasks: [], tasksLoaded: false, unsubTasks: null, editingTaskId: null, deleteTaskId: null,
+  taskSource: 'local'   // 'local' | 'cloud'
 };
 const published = () => state.records.filter((r) => r.published);
 
@@ -269,14 +274,18 @@ function renderList() {
 
 function renderCard(r) {
   const t = core.timeInfo(r, state.now);
+  const dateList = r.closesAt != null
+    ? h('dl', { class: 'dates' },
+        h('dt', {}, 'Deadline'), h('dd', {}, core.formatCairo(r.deadline)),
+        h('dt', {}, 'Closes'), h('dd', {}, core.formatCairo(r.closesAt)))
+    : h('dl', { class: 'dates dates-single' },
+        h('dt', {}, 'Deadline'), h('dd', {}, core.formatCairo(r.deadline)));
   return h('article', { class: 'sub-card', 'data-id': r.id, 'data-status': t.status, 'data-urgency': t.urgency },
     h('div', { class: 'sub-head' },
       h('h3', {}, r.subject),
       h('span', { class: 'badge type' }, r.type)),
     r.courseCode ? h('p', { class: 'sub-code' }, r.courseCode) : null,
-    h('dl', { class: 'dates' },
-      h('dt', {}, 'Deadline'), h('dd', {}, core.formatCairo(r.deadline)),
-      h('dt', {}, 'Closes'), h('dd', {}, core.formatCairo(r.closesAt))),
+    dateList,
     h('p', { class: 'time-pill', 'data-role': 'time' }, svg(CLOCK_ICON), h('span', {}, t.label)),
     r.description ? h('p', { class: 'sub-desc' }, r.description) : null,
     r.attachments.length ? h('ul', { class: 'atts', 'aria-label': 'PDF attachments' }, r.attachments.map(renderAttachment)) : null);

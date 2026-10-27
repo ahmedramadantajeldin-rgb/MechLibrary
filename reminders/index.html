@@ -50,7 +50,13 @@
       <svg class="logo" viewBox="0 0 918 236" aria-hidden="true"><use href="#logo-horizontal"/></svg>
       <svg class="flag" viewBox="0 0 40 20" role="img" aria-label="Palestine flag"><use href="#flag-ps"/></svg>
     </a>
-    <a class="nav-link" href="../#resources">All courses</a>
+    <div class="header-actions">
+      <a class="nav-link" href="../#resources">All courses</a>
+      <button type="button" class="notif-bell" id="notif-bell" aria-label="Notifications" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge" id="notif-badge" hidden>0</span>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -80,6 +86,28 @@
         <button type="button" class="btn" id="admin-new">+ New submission</button>
       </div>
       <p class="hint">Visible only to authorized administrators. Students see published records only.</p>
+      <div class="admin-toolbar toolbar" role="group" aria-label="Filter and sort admin submissions">
+        <div class="field"><label for="adm-search">Search</label><input type="search" id="adm-search" placeholder="Subject, code, or title…" autocomplete="off"></div>
+        <div class="field"><label for="adm-subject">Subject</label><select id="adm-subject"><option value="all">All subjects</option></select></div>
+        <div class="field"><label for="adm-type">Type</label><select id="adm-type"><option value="all">All types</option></select></div>
+        <div class="field"><label for="adm-status">Status</label>
+          <select id="adm-status">
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="overdue">Deadline passed, still open</option>
+            <option value="past">Closed</option>
+            <option value="published">Published only</option>
+            <option value="draft">Draft only</option>
+          </select></div>
+        <div class="field"><label for="adm-sort">Sort by</label>
+          <select id="adm-sort">
+            <option value="smart">Most urgent first</option>
+            <option value="newest">Newest first</option>
+            <option value="deadline-asc">Deadline: earliest first</option>
+            <option value="deadline-desc">Deadline: latest first</option>
+            <option value="subject">Subject A–Z</option>
+          </select></div>
+      </div>
       <ul class="admin-list" id="admin-list"></ul>
     </section>
 
@@ -135,11 +163,13 @@
         <div class="field"><label for="flt-sort">Sort by</label>
           <select id="flt-sort">
             <option value="smart">Most urgent first</option>
+            <option value="newest">Newest first</option>
             <option value="deadline-asc">Deadline: earliest first</option>
             <option value="deadline-desc">Deadline: latest first</option>
             <option value="subject">Subject A–Z</option>
           </select></div>
       </div>
+      <div class="search-bar"><label for="flt-search" class="sr-only">Search submissions</label><input type="search" id="flt-search" placeholder="Search by subject, code, or title…" autocomplete="off"></div>
       <p class="tz-note" style="margin-top:10px">All times are shown in Cairo time (Africa/Cairo). This page shows the official deadline and closing time only — it does not know whether you have submitted.</p>
 
       <details class="panel" id="notify-box" style="margin-top:16px">
@@ -148,9 +178,45 @@
           <label class="check"><input type="checkbox" id="n-enable"><span>Show a browser notification before deadlines</span></label>
           <fieldset id="n-leads">
             <legend>Notify me</legend>
+            <label class="check"><input type="checkbox" value="604800000"><span>1 week before</span></label>
             <label class="check"><input type="checkbox" value="86400000"><span>24 hours before</span></label>
+            <label class="check"><input type="checkbox" value="21600000"><span>6 hours before</span></label>
             <label class="check"><input type="checkbox" value="10800000"><span>3 hours before</span></label>
             <label class="check"><input type="checkbox" value="3600000"><span>1 hour before</span></label>
+            <label class="check"><input type="checkbox" value="900000"><span>15 minutes before</span></label>
+            <label class="check"><input type="checkbox" value="0"><span>At the scheduled time</span></label>
+          </fieldset>
+          <fieldset id="n-types">
+            <legend>Remind me about</legend>
+            <label class="check"><input type="checkbox" value="Assignment" checked><span>Assignments</span></label>
+            <label class="check"><input type="checkbox" value="Quiz" checked><span>Quizzes</span></label>
+            <label class="check"><input type="checkbox" value="Midterm" checked><span>Exams / Midterms</span></label>
+            <label class="check"><input type="checkbox" value="M Assignment" checked><span>M Assignments</span></label>
+            <label class="check"><input type="checkbox" value="M Quiz" checked><span>M Quizzes</span></label>
+            <label class="check"><input type="checkbox" value="M Midterm" checked><span>M Midterms</span></label>
+            <label class="check"><input type="checkbox" value="M Project" checked><span>M Projects</span></label>
+            <label class="check"><input type="checkbox" value="personalTask" checked><span>Personal tasks</span></label>
+          </fieldset>
+          <fieldset id="n-sound-group">
+            <legend>Notification sound</legend>
+            <div class="sound-row">
+              <select id="n-sound">
+                <option value="chime">Soft chime</option>
+                <option value="bell">Mechanical bell</option>
+                <option value="alarm">Digital alarm</option>
+                <option value="silent">Silent</option>
+                <option value="custom">Custom sound…</option>
+              </select>
+              <button type="button" class="btn btn-outline btn-sm" id="n-test-sound">Test</button>
+            </div>
+            <div class="sound-row" style="margin-top:8px">
+              <label for="n-volume" style="font-size:.88rem;font-weight:600;white-space:nowrap">Volume</label>
+              <input type="range" id="n-volume" min="0" max="100" value="50" style="flex:1">
+            </div>
+            <div id="n-custom-wrap" hidden style="margin-top:8px">
+              <label for="n-custom-file" class="hint">Upload a short audio file (max 500 KB). Not all formats work in all browsers.</label>
+              <input type="file" id="n-custom-file" accept="audio/*">
+            </div>
           </fieldset>
           <p class="hint" id="n-hint">These notifications work only while Mech Reminders is open (in a browser tab or the installed app) on this device. They are not push messages: nothing is sent when the app is closed. Your choice is saved on this device only.</p>
         </div>
@@ -159,6 +225,33 @@
       <div id="list" style="margin-top:24px"></div>
       <p class="empty" id="empty" hidden>No submissions match these filters.</p>
     </section>
+
+    <!-- Personal tasks -->
+    <section class="panel" id="tasks-section" style="margin-top:20px">
+      <summary>My personal tasks</summary>
+      <div class="panel-body">
+        <p class="hint">Your private tasks are stored on this device. Sign in to sync them across devices.</p>
+        <div class="admin-head" style="margin-top:4px">
+          <span class="hint" id="tasks-count"></span>
+          <button type="button" class="btn btn-sm" id="task-new">+ New task</button>
+        </div>
+        <ul class="task-list" id="task-list"></ul>
+        <p class="empty" id="tasks-empty" hidden>No personal tasks yet.</p>
+      </div>
+    </section>
+
+    <!-- Notification center (toggled by the bell icon) -->
+    <aside class="notif-center" id="notif-center" hidden aria-label="Notification center">
+      <div class="notif-center-head">
+        <h2>Notifications</h2>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-outline btn-sm" id="notif-read-all">Mark all read</button>
+          <button type="button" class="btn btn-outline btn-sm" id="notif-close" aria-label="Close notification center">✕</button>
+        </div>
+      </div>
+      <ul class="notif-list" id="notif-list"></ul>
+      <p class="empty" id="notif-empty" hidden>No notifications yet.</p>
+    </aside>
   </div>
 </main>
 
@@ -181,7 +274,15 @@
     </div>
     <div class="form-grid two">
       <div class="field"><label for="f-deadline">Official deadline * (Cairo time)</label><input type="datetime-local" id="f-deadline"><p class="err" id="e-deadline"></p></div>
-      <div class="field"><label for="f-closes">Closing / end time * (Cairo time)</label><input type="datetime-local" id="f-closes"><p class="err" id="e-closesAt"></p></div>
+      <div class="field" id="f-closes-wrap">
+        <label class="check" style="margin-bottom:6px"><input type="checkbox" id="f-closes-toggle"><span>Set closing time</span></label>
+        <div id="f-closes-fields" hidden>
+          <label for="f-closes">Closing / end time (Cairo time)</label>
+          <input type="datetime-local" id="f-closes">
+          <p class="hint" style="margin-top:2px">Suggested: 1 hour after the deadline. You can change it.</p>
+        </div>
+        <p class="err" id="e-closesAt"></p>
+      </div>
     </div>
     <div class="form-grid two">
       <div class="field"><label for="f-code">Course code (optional)</label><input type="text" id="f-code" maxlength="40" autocomplete="off"><p class="err" id="e-courseCode"></p></div>
@@ -239,6 +340,36 @@
     <div class="dlg-actions">
       <button type="button" class="btn btn-outline" id="oc-cancel">Cancel</button>
       <button type="button" class="btn btn-danger" id="oc-confirm">Revoke access</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Personal task create / edit -->
+<dialog id="task-dialog" aria-labelledby="task-title">
+  <form class="dlg" id="task-form" novalidate>
+    <h2 id="task-title">New task</h2>
+    <div class="dlg-error" id="task-error" role="alert"></div>
+    <div class="field"><label for="t-title">Task title *</label><input type="text" id="t-title" maxlength="200" autocomplete="off"><p class="err" id="te-title"></p></div>
+    <div class="form-grid two">
+      <div class="field"><label for="t-subject">Subject (optional)</label><input type="text" id="t-subject" maxlength="120" autocomplete="off" list="subject-options"></div>
+      <div class="field"><label for="t-datetime">Date and time (optional, Cairo time)</label><input type="datetime-local" id="t-datetime"></div>
+    </div>
+    <div class="field"><label for="t-notes">Notes (optional)</label><textarea id="t-notes" maxlength="1000"></textarea></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-outline" id="t-cancel">Cancel</button>
+      <button type="submit" class="btn" id="t-save">Save task</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Delete task confirmation -->
+<dialog id="task-confirm-dialog" aria-labelledby="task-confirm-title">
+  <div class="dlg">
+    <h2 id="task-confirm-title">Delete this task?</h2>
+    <p id="task-confirm-text"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-outline" id="tc-cancel">Cancel</button>
+      <button type="button" class="btn btn-danger" id="tc-delete">Delete</button>
     </div>
   </div>
 </dialog>

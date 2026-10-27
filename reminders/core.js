@@ -7,9 +7,11 @@ export const LIMITS = { subject: 120, courseCode: 40, description: 1000, attTitl
 
 const HOUR = 3600e3;
 const DAY = 24 * HOUR;
+const WEEK = 7 * DAY;
 export const URGENT_MS = DAY;                    // < 24 h  → urgent
 export const SOON_MS = 3 * DAY;                  // < 72 h  → soon
-export const DEFAULT_LEADS = [DAY, 3 * HOUR, HOUR];
+export const ALL_LEADS = [WEEK, DAY, 6 * HOUR, 3 * HOUR, HOUR, 15 * 60000, 0];
+export const DEFAULT_LEADS = [DAY, HOUR];        // checked by default for new users
 
 /* ---------- Time zone helpers (Africa/Cairo, DST-aware via Intl) ---------- */
 const wallFmt = new Intl.DateTimeFormat('en-GB', {
@@ -49,14 +51,15 @@ const showFmt = new Intl.DateTimeFormat('en-GB', {
   timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
   hour: 'numeric', minute: '2-digit', hour12: true
 });
-export const formatCairo = (ms) => showFmt.format(new Date(ms));
+export const formatCairo = (ms) => ms != null ? showFmt.format(new Date(ms)) : '—';
 
 /* ---------- Status & countdown ---------- */
 /** upcoming: before the official deadline · overdue: deadline passed but the window is still open · past: window closed */
 export function statusOf(s, now) {
   if (now < +s.deadline) return 'upcoming';
-  if (now < +s.closesAt) return 'overdue';
-  return 'past';
+  if (s.closesAt != null && now < +s.closesAt) return 'overdue';
+  if (s.closesAt != null) return 'past';
+  return 'overdue';                              // deadline passed, no closing time → still open
 }
 
 export function formatDuration(ms) {
@@ -70,13 +73,14 @@ export function formatDuration(ms) {
 
 /** Wording never claims anything about whether the student submitted. */
 export function timeInfo(s, now) {
-  const status = statusOf(s, now), d = +s.deadline, c = +s.closesAt;
+  const status = statusOf(s, now), d = +s.deadline, c = s.closesAt != null ? +s.closesAt : null;
   if (status === 'upcoming') {
     const left = d - now;
     return { status, urgency: left < URGENT_MS ? 'urgent' : left < SOON_MS ? 'soon' : 'normal', label: `${formatDuration(left)} left until the deadline` };
   }
   if (status === 'overdue') {
-    return { status, urgency: 'overdue', label: `Deadline passed ${formatDuration(now - d)} ago · window closes in ${formatDuration(c - now)}` };
+    if (c != null) return { status, urgency: 'overdue', label: `Deadline passed ${formatDuration(now - d)} ago · window closes in ${formatDuration(c - now)}` };
+    return { status, urgency: 'overdue', label: `Deadline passed ${formatDuration(now - d)} ago · no closing time set` };
   }
   return { status, urgency: 'none', label: `Closed ${formatDuration(now - c)} ago` };
 }
@@ -119,7 +123,19 @@ export function toggleSubject(selected, key, availableKeys) {
   return next.length >= avail.length ? [] : next;
 }
 
-/** f = { subjects:[key…] (empty = all), type:'all'|TYPE, status:'all'|'upcoming'|'overdue'|'past', sort:'smart'|'deadline-asc'|'deadline-desc'|'subject' }
+/** Returns true when the record matches a free-text search query (case-insensitive, partial match). */
+export function searchMatches(record, query) {
+  if (!query) return true;
+  const q = String(query).trim().toLowerCase();
+  if (!q) return true;
+  return (record.subject || '').toLowerCase().includes(q)
+    || (record.courseCode || '').toLowerCase().includes(q)
+    || (record.type || '').toLowerCase().includes(q)
+    || (record.description || '').toLowerCase().includes(q);
+}
+
+/** f = { subjects:[key…] (empty = all), type:'all'|TYPE, status:'all'|'upcoming'|'overdue'|'past',
+ *        sort:'smart'|'deadline-asc'|'deadline-desc'|'newest'|'subject', search:string }
  *  (the older single-value form  subject:'all'|name  is still understood) */
 export function filterAndSort(list, f, now) {
   const wanted = Array.isArray(f.subjects) ? f.subjects.map(norm).filter(Boolean)
@@ -127,16 +143,18 @@ export function filterAndSort(list, f, now) {
   const out = list.filter((s) =>
     (!wanted.length || wanted.includes(norm(s.subject))) &&
     (f.type === 'all' || s.type === f.type) &&
-    (f.status === 'all' || statusOf(s, now) === f.status));
+    (f.status === 'all' || statusOf(s, now) === f.status) &&
+    searchMatches(s, f.search));
   const rank = { upcoming: 0, overdue: 1, past: 2 };
   const by = {
     'deadline-asc': (a, b) => a.deadline - b.deadline,
     'deadline-desc': (a, b) => b.deadline - a.deadline,
+    'newest': (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
     subject: (a, b) => a.subject.localeCompare(b.subject) || a.deadline - b.deadline,
     smart: (a, b) => {
       const sa = statusOf(a, now), sb = statusOf(b, now);
       if (sa !== sb) return rank[sa] - rank[sb];
-      return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline;   // nearest first; most recent first for past
+      return sa === 'past' ? b.deadline - a.deadline : a.deadline - b.deadline;
     }
   };
   return out.sort(by[f.sort] || by.smart);
@@ -161,9 +179,10 @@ export function validateSubmission(form) {
   if (courseCode.length > LIMITS.courseCode) errors.courseCode = `Keep the course code under ${LIMITS.courseCode} characters.`;
   if (description.length > LIMITS.description) errors.description = `Keep the description under ${LIMITS.description} characters.`;
 
-  const deadline = parseCairoLocal(form.deadline), closesAt = parseCairoLocal(form.closesAt);
+  const deadline = parseCairoLocal(form.deadline);
+  const closesAt = form.closesAt ? parseCairoLocal(form.closesAt) : null;
   if (deadline == null) errors.deadline = form.deadline ? 'This time does not exist in Cairo (clocks skip forward). Pick another.' : 'Set the official deadline.';
-  if (closesAt == null) errors.closesAt = form.closesAt ? 'This time does not exist in Cairo (clocks skip forward). Pick another.' : 'Set the closing / end time.';
+  if (form.closesAt && closesAt == null) errors.closesAt = 'This time does not exist in Cairo (clocks skip forward). Pick another.';
   if (deadline != null && closesAt != null && closesAt < deadline) errors.closesAt = 'The closing time cannot be earlier than the deadline.';
 
   const attachments = [];
@@ -231,7 +250,7 @@ export function dueReminders(list, now, leads, fired) {
   const notify = [], nextFired = { ...fired };
   const sorted = [...leads].sort((a, b) => b - a);
   for (const s of list) {
-    if (!(now < +s.deadline)) continue;
+    if (now >= +s.deadline + 120000) continue;     // 2-min grace for at-time (L=0) notifications
     const crossed = sorted.filter((L) => +s.deadline - L <= now);
     if (!crossed.length) continue;
     const keys = crossed.map((L) => `${s.id}|${+s.deadline}|${L}`);

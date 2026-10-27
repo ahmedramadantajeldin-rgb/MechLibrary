@@ -190,7 +190,6 @@ service cloud.firestore {
           'subject',
           'type',
           'deadline',
-          'closesAt',
           'attachments',
           'published',
           'createdAt',
@@ -215,8 +214,9 @@ service cloud.firestore {
             || (d.description is string
                 && d.description.size() <= 1000))
         && d.deadline is timestamp
-        && d.closesAt is timestamp
-        && d.closesAt >= d.deadline
+        && (!('closesAt' in d)
+            || (d.closesAt is timestamp
+                && d.closesAt >= d.deadline))
         && d.published is bool
         && validAttachments(d.attachments)
         && d.updatedAt == request.time;
@@ -245,6 +245,56 @@ service cloud.firestore {
 
       // Only admins can delete records.
       allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------ user preferences (keyed by UID, never e-mail)
+    //
+    // Each authenticated user may store personal notification settings, selected subjects, etc.
+    // Only the owning user can read or write their own document.
+
+    match /userPreferences/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'selectedSubjects', 'notificationSettings', 'updatedAt'
+        ])
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    // ------------------------------------------------------------------ personal tasks (keyed by UID)
+    //
+    // Each authenticated user may create, read, update and delete their own private tasks.
+    // These are completely invisible to other users, administrators, and the owner.
+
+    match /personalTasks/{uid}/tasks/{taskId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'title', 'subject', 'datetime', 'notes', 'completed', 'reminderLeads',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll(['title', 'completed', 'createdAt', 'updatedAt'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.completed is bool
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'title', 'subject', 'datetime', 'notes', 'completed', 'reminderLeads',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.completed is bool
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     // Deny all access to every other collection and document.
