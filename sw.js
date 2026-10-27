@@ -8,7 +8,7 @@
  */
 'use strict';
 
-const VERSION = 'v4';   // v4: manifest name/screenshots fix (precache a fresh manifest)
+const VERSION = 'v5';   // v5: enhanced reminders (optional closesAt, tasks, notifications)
 const CACHE   = 'mechhub-' + VERSION;
 const SCOPE   = self.registration.scope;          // e.g. https://user.github.io/MechLibrary/
 const abs     = (p) => new URL(p, SCOPE).href;
