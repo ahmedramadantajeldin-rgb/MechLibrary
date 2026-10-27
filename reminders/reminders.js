@@ -346,7 +346,7 @@ function renderAdmin() {
   ul.replaceChildren();
   if (!state.loaded) { ul.append(h('li', { class: 'hint' }, 'Loading…')); return; }
   const rows = adminFilteredRecords();
-  if (!rows.length) { ul.append(h('li', { class: 'hint' }, state.records.length ? 'No records match these filters.' : 'No records yet. Use "New submission" to add the first one.')); return; }
+  if (!rows.length) { ul.append(h('li', { class: 'hint' }, state.records.length ? 'No records match these filters.' : 'No records yet. Use \u201cNew submission\u201d to add the first one.')); return; }
   for (const r of rows) {
     const st = { upcoming: 'Upcoming', overdue: 'Deadline passed, still open', past: 'Closed' }[core.statusOf(r, state.now)];
     const closesText = r.closesAt != null ? ` · Closes ${core.formatCairo(r.closesAt)}` : '';
@@ -364,6 +364,7 @@ function renderAdmin() {
         h('button', { type: 'button', class: 'btn btn-outline btn-sm', 'data-act': 'delete', onclick: () => openDelete(r) }, 'Delete'))));
   }
 }
+
 /* After sign-out (or for non-admins) nothing from the admin side may linger in the page: drafts, form values, previews. */
 function clearAdminDom() {
   ['form-dialog', 'preview-dialog', 'confirm-dialog'].forEach((id) => { const d = $(id); if (d.open) d.close(); });
