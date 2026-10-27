@@ -110,6 +110,7 @@ function onAuth(user) {
   state.wasRevoked = false;
   renderAccount();
   startWatching();
+  if (user && user.uid) startCloudTasks(user.uid); else stopCloudTasks();
   if (!verified) return;
   if (state.isOwner) watchOwnerList(gen); else watchOwnAccess(gen);
 }
@@ -147,7 +148,7 @@ function watchOwnerList(gen) {
 }
 
 /* ================= rendering ================= */
-function renderAll() { renderStats(); renderFilters(); renderList(); renderAdmin(); renderOwner(); state.sig = signature(); }
+function renderAll() { renderStats(); renderFilters(); renderList(); renderAdmin(); renderOwner(); renderTasks(); state.sig = signature(); }
 
 function signature() {
   return state.records.map((r) => { const t = core.timeInfo(r, state.now); return `${r.id}:${t.status}:${t.urgency}:${r.published}`; }).join('|');
@@ -192,6 +193,7 @@ function renderFilters() {
   state.filters.type = $('flt-type').value;
   $('flt-status').value = state.filters.status;
   $('flt-sort').value = state.filters.sort;
+  // search field retains its value (user-typed)
 }
 
 /* ---- subject picker (multi-select) ----
@@ -414,7 +416,11 @@ function openForm(rec) {
   $('f-code').value = rec ? rec.courseCode : '';
   $('f-desc').value = rec ? rec.description : '';
   $('f-deadline').value = rec ? core.toCairoInputValue(rec.deadline) : '';
-  $('f-closes').value = rec ? core.toCairoInputValue(rec.closesAt) : '';
+  // Closing time toggle
+  const hasCloses = rec && rec.closesAt != null;
+  $('f-closes-toggle').checked = hasCloses;
+  $('f-closes-fields').hidden = !hasCloses;
+  $('f-closes').value = hasCloses ? core.toCairoInputValue(rec.closesAt) : '';
   $('f-published').checked = rec ? rec.published : false;
   $('f-atts').replaceChildren(...(rec && rec.attachments.length ? rec.attachments : [{}]).map(attRow));
   $('form-dialog').showModal();
@@ -424,7 +430,7 @@ function openForm(rec) {
 function readForm() {
   return {
     subject: $('f-subject').value, type: $('f-type').value, courseCode: $('f-code').value, description: $('f-desc').value,
-    deadline: $('f-deadline').value, closesAt: $('f-closes').value, published: $('f-published').checked,
+    deadline: $('f-deadline').value, closesAt: $('f-closes-toggle').checked ? $('f-closes').value : '', published: $('f-published').checked,
     attachments: [...document.querySelectorAll('#f-atts .att-row')].map((r) => ({
       title: r.querySelector('.a-title').value, url: r.querySelector('.a-url').value, description: r.querySelector('.a-desc').value
     }))
@@ -625,10 +631,18 @@ async function signOut() {
 
 /* ================= browser notifications (only while this page is open) ================= */
 function loadSettings() {
-  const def = { enabled: false, leads: core.DEFAULT_LEADS.slice() };
+  const defTypes = Object.fromEntries(core.TYPES.map((t) => [t, true]).concat([['personalTask', true]]));
+  const def = { enabled: false, leads: core.DEFAULT_LEADS.slice(), types: defTypes, sound: 'chime', volume: 0.5, customSound: null };
   try {
     const s = JSON.parse(localStorage.getItem(LS_SETTINGS) || 'null');
-    if (s && typeof s.enabled === 'boolean' && Array.isArray(s.leads)) return { enabled: s.enabled, leads: s.leads.filter((n) => core.DEFAULT_LEADS.includes(n)) };
+    if (s && typeof s.enabled === 'boolean') return {
+      ...def, enabled: s.enabled,
+      leads: Array.isArray(s.leads) ? s.leads.filter((n) => core.ALL_LEADS.includes(n)) : def.leads,
+      types: s.types && typeof s.types === 'object' ? { ...def.types, ...s.types } : def.types,
+      sound: typeof s.sound === 'string' ? s.sound : def.sound,
+      volume: typeof s.volume === 'number' ? Math.max(0, Math.min(1, s.volume)) : def.volume,
+      customSound: typeof s.customSound === 'string' && s.customSound.length < 700000 ? s.customSound : null
+    };
   } catch (_) { /* storage unavailable or corrupt → defaults */ }
   return def;
 }
@@ -640,6 +654,9 @@ const notifSupported = () => typeof window.Notification === 'function';
 
 function wireNotifySettings() {
   const enable = $('n-enable'), leads = [...document.querySelectorAll('#n-leads input')], hint = $('n-hint');
+  const typeInputs = [...document.querySelectorAll('#n-types input')];
+  const soundSel = $('n-sound'), volumeSlider = $('n-volume'), testBtn = $('n-test-sound');
+  const customWrap = $('n-custom-wrap'), customFile = $('n-custom-file');
   const base = hint.textContent;
   if (!notifSupported()) {
     enable.disabled = true; leads.forEach((i) => { i.disabled = true; });
@@ -664,9 +681,44 @@ function wireNotifySettings() {
     saveSettings();
     checkReminders();
   }));
+  // Per-type toggles
+  typeInputs.forEach((i) => { i.checked = state.settings.types[i.value] !== false; });
+  typeInputs.forEach((i) => i.addEventListener('change', () => {
+    state.settings.types[i.value] = i.checked;
+    saveSettings();
+  }));
+  // Sound settings
+  soundSel.value = state.settings.sound;
+  volumeSlider.value = Math.round(state.settings.volume * 100);
+  customWrap.hidden = soundSel.value !== 'custom';
+  soundSel.addEventListener('change', () => {
+    state.settings.sound = soundSel.value;
+    customWrap.hidden = soundSel.value !== 'custom';
+    saveSettings();
+  });
+  volumeSlider.addEventListener('input', () => {
+    state.settings.volume = +volumeSlider.value / 100;
+    saveSettings();
+  });
+  testBtn.addEventListener('click', () => playSound(state.settings.sound, state.settings.volume));
+  customFile.addEventListener('change', () => {
+    const file = customFile.files[0];
+    if (!file) return;
+    if (file.size > 512000) { alert('File too large (max 500 KB).'); customFile.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = () => { state.settings.customSound = reader.result; saveSettings(); };
+    reader.readAsDataURL(file);
+  });
 }
 
-async function showNotification(title, body, tag) {
+async function showNotification(title, body, tag, sub) {
+  // Play sound
+  playSound(state.settings.sound, state.settings.volume);
+  // Add to in-app notification history
+  prefs.addNotifHistory({ title, body, subId: sub ? sub.id : null });
+  renderNotifCenter();
+  updateNotifBadge();
+  // Browser notification
   const opts = { body, tag, icon: new URL('../icons/android-chrome-192.png', location.href).href };
   try {
     const reg = 'serviceWorker' in navigator
@@ -679,11 +731,15 @@ async function showNotification(title, body, tag) {
 function checkReminders() {
   if (!notifSupported() || !state.settings.enabled || Notification.permission !== 'granted' || !state.loaded) return;
   const fired = core.pruneFired(loadFired(), state.now);
-  const res = core.dueReminders(published(), state.now, state.settings.leads, fired);
+  // Filter by enabled types
+  const typeEnabled = published().filter((s) => state.settings.types[s.type] !== false);
+  const res = core.dueReminders(typeEnabled, state.now, state.settings.leads, fired);
   saveFired(res.fired);
   for (const n of res.notify) {
-    showNotification(`${n.sub.subject} — ${n.sub.type}`,
-      `Deadline ${core.formatCairo(n.sub.deadline)} · ${core.formatDuration(n.remaining)} left.`, `mr-${n.sub.id}-${n.sub.deadline}`);
+    const body = n.remaining <= 0
+      ? `Deadline now: ${core.formatCairo(n.sub.deadline)}`
+      : `Deadline ${core.formatCairo(n.sub.deadline)} · ${core.formatDuration(n.remaining)} left.`;
+    showNotification(`${n.sub.subject} — ${n.sub.type}`, body, `mr-${n.sub.id}-${n.sub.deadline}`, n.sub);
   }
 }
 
@@ -713,6 +769,14 @@ async function init() {
   $('flt-type').addEventListener('change', (e) => { f.type = e.target.value; renderList(); });
   $('flt-status').addEventListener('change', (e) => { f.status = e.target.value; renderList(); });
   $('flt-sort').addEventListener('change', (e) => { f.sort = e.target.value; renderList(); });
+  $('flt-search').addEventListener('input', (e) => { f.search = e.target.value; renderList(); });
+  // Admin filters
+  const af = state.adminFilters;
+  $('adm-search').addEventListener('input', (e) => { af.search = e.target.value; renderAdmin(); });
+  $('adm-subject').addEventListener('change', (e) => { af.subject = e.target.value; renderAdmin(); });
+  $('adm-type').addEventListener('change', (e) => { af.type = e.target.value; renderAdmin(); });
+  $('adm-status').addEventListener('change', (e) => { af.status = e.target.value; renderAdmin(); });
+  $('adm-sort').addEventListener('change', (e) => { af.sort = e.target.value; renderAdmin(); });
   wireNotifySettings();
 
   $('admin-new').addEventListener('click', () => openForm(null));
@@ -733,6 +797,38 @@ async function init() {
   $('oc-cancel').addEventListener('click', () => $('owner-confirm-dialog').close());
   $('oc-confirm').addEventListener('click', confirmOwnerAction);
 
+  // Closing time toggle
+  $('f-closes-toggle').addEventListener('change', () => {
+    const on = $('f-closes-toggle').checked;
+    $('f-closes-fields').hidden = !on;
+    if (on && !$('f-closes').value && $('f-deadline').value) {
+      const dl = core.parseCairoLocal($('f-deadline').value);
+      if (dl != null) $('f-closes').value = core.toCairoInputValue(dl + 3600000);
+    }
+    if (!on) $('f-closes').value = '';
+  });
+  $('f-deadline').addEventListener('change', () => {
+    if ($('f-closes-toggle').checked && $('f-deadline').value) {
+      const dl = core.parseCairoLocal($('f-deadline').value);
+      if (dl != null && !$('f-closes').value) $('f-closes').value = core.toCairoInputValue(dl + 3600000);
+    }
+  });
+
+  // Personal tasks
+  $('task-new').addEventListener('click', () => openTaskForm(null));
+  $('task-form').addEventListener('submit', saveTask);
+  $('t-cancel').addEventListener('click', () => $('task-dialog').close());
+  $('tc-cancel').addEventListener('click', () => $('task-confirm-dialog').close());
+  $('tc-delete').addEventListener('click', confirmDeleteTask);
+  initTasks();
+
+  // Notification center
+  $('notif-bell').hidden = false;
+  $('notif-bell').addEventListener('click', toggleNotifCenter);
+  $('notif-close').addEventListener('click', () => { $('notif-center').hidden = true; });
+  $('notif-read-all').addEventListener('click', () => { prefs.markAllNotifsRead(); renderNotifCenter(); updateNotifBadge(); });
+  updateNotifBadge();
+
   try { state.backend = await createBackend(FIREBASE_CONFIG); }
   catch (e) {
     $('board').hidden = true;
@@ -743,5 +839,183 @@ async function init() {
   setInterval(tick, TICK_MS);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tick(); });
 }
+
+/* ================= notification sounds (Web Audio API synthesis) ================= */
+const SOUND_DEFS = {
+  chime: [{ type: 'sine', freq: 1047, dur: 0.8 }, { type: 'sine', freq: 1319, dur: 0.6, delay: 0.15 }],
+  bell: [{ type: 'sine', freq: 830, dur: 1.2 }, { type: 'sine', freq: 1245, dur: 0.8, delay: 0.05 }],
+  alarm: [{ type: 'square', freq: 880, dur: 0.15 }, { type: 'square', freq: 660, dur: 0.15, delay: 0.2 }, { type: 'square', freq: 880, dur: 0.15, delay: 0.4 }, { type: 'square', freq: 660, dur: 0.15, delay: 0.6 }]
+};
+function playSound(name, volume = 0.5) {
+  if (name === 'silent' || !name) return;
+  if (name === 'custom' && state.settings.customSound) {
+    try { const a = new Audio(state.settings.customSound); a.volume = volume; a.play().catch(() => {}); } catch (_) {}
+    return;
+  }
+  const tones = SOUND_DEFS[name];
+  if (!tones) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    for (const t of tones) {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = t.type; osc.frequency.value = t.freq;
+      gain.gain.setValueAtTime(volume * 0.3, ctx.currentTime + (t.delay || 0));
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (t.delay || 0) + t.dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + (t.delay || 0));
+      osc.stop(ctx.currentTime + (t.delay || 0) + t.dur);
+    }
+  } catch (_) { /* Web Audio not supported */ }
+}
+
+/* ================= notification center ================= */
+function toggleNotifCenter() {
+  const panel = $('notif-center');
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) renderNotifCenter();
+}
+function updateNotifBadge() {
+  const count = prefs.unreadCount();
+  const badge = $('notif-badge');
+  badge.textContent = count > 99 ? '99+' : String(count);
+  badge.hidden = count === 0;
+}
+function renderNotifCenter() {
+  const list = $('notif-list');
+  const history = prefs.loadNotifHistory();
+  list.replaceChildren();
+  $('notif-empty').hidden = history.length > 0;
+  history.forEach((n, i) => {
+    const ago = core.formatDuration(Date.now() - n.timestamp);
+    const li = h('li', { class: n.read ? '' : 'unread', onclick: () => { prefs.markNotifRead(i); renderNotifCenter(); updateNotifBadge(); } },
+      h('span', { class: 'notif-title' }, n.title),
+      h('span', { class: 'notif-body' }, n.body),
+      h('span', { class: 'notif-time' }, `${ago} ago`));
+    list.append(li);
+  });
+}
+
+/* ================= personal tasks ================= */
+function initTasks() {
+  state.tasks = prefs.loadLocalTasks();
+  state.tasksLoaded = true;
+  state.taskSource = 'local';
+  renderTasks();
+}
+function startCloudTasks(uid) {
+  if (state.unsubTasks) { state.unsubTasks(); state.unsubTasks = null; }
+  // Migrate local tasks to cloud on first sign-in
+  const localTasks = prefs.loadLocalTasks();
+  if (localTasks.length > 0) {
+    migrateLocalToCloud(uid, localTasks);
+  }
+  state.unsubTasks = state.backend.watchTasks(uid,
+    (tasks) => { state.tasks = tasks; state.tasksLoaded = true; state.taskSource = 'cloud'; renderTasks(); },
+    () => { /* fallback to local */ state.tasks = prefs.loadLocalTasks(); state.tasksLoaded = true; state.taskSource = 'local'; renderTasks(); });
+}
+async function migrateLocalToCloud(uid, localTasks) {
+  for (const t of localTasks) {
+    try { await state.backend.createTask(uid, t); } catch (_) { /* skip duplicates or errors */ }
+  }
+  // Clear local tasks after successful migration
+  prefs.saveLocalTasks([]);
+}
+function stopCloudTasks() {
+  if (state.unsubTasks) { state.unsubTasks(); state.unsubTasks = null; }
+  state.tasks = prefs.loadLocalTasks();
+  state.tasksLoaded = true;
+  state.taskSource = 'local';
+  renderTasks();
+}
+function renderTasks() {
+  const list = $('task-list');
+  const empty = $('tasks-empty');
+  const count = $('tasks-count');
+  list.replaceChildren();
+  if (!state.tasksLoaded) { list.append(h('li', { class: 'hint' }, 'Loading…')); empty.hidden = true; return; }
+  const tasks = [...state.tasks].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    return (a.datetime || Infinity) - (b.datetime || Infinity);
+  });
+  count.textContent = `${tasks.filter((t) => !t.completed).length} active task${tasks.filter((t) => !t.completed).length === 1 ? '' : 's'}`;
+  empty.hidden = tasks.length > 0;
+  for (const t of tasks) {
+    const dateText = t.datetime ? core.formatCairo(t.datetime) : '';
+    const timeLeft = t.datetime && !t.completed && t.datetime > state.now ? core.formatDuration(t.datetime - state.now) + ' left' : '';
+    list.append(h('li', { class: `task-row${t.completed ? ' completed' : ''}`, 'data-id': t.id },
+      h('div', {},
+        h('div', { class: 'task-head' },
+          h('input', { type: 'checkbox', class: 'task-check', checked: t.completed, 'aria-label': 'Mark as complete', onchange: () => toggleTask(t) }),
+          h('span', { class: `task-title${t.completed ? ' done' : ''}` }, t.title)),
+        t.subject || dateText ? h('div', { class: 'task-meta' }, [t.subject, dateText, timeLeft].filter(Boolean).join(' · ')) : null,
+        t.notes ? h('p', { class: 'task-notes' }, t.notes) : null),
+      h('div', { class: 'admin-actions' },
+        h('button', { type: 'button', class: 'btn btn-outline btn-sm', onclick: () => openTaskForm(t) }, 'Edit'),
+        h('button', { type: 'button', class: 'btn btn-outline btn-sm', onclick: () => openDeleteTask(t) }, 'Delete'))));
+  }
+}
+function openTaskForm(task) {
+  state.editingTaskId = task ? task.id : null;
+  $('task-title').textContent = task ? 'Edit task' : 'New task';
+  $('task-error').textContent = '';
+  $('te-title').textContent = '';
+  $('t-title').value = task ? task.title : '';
+  $('t-subject').value = task ? task.subject : '';
+  $('t-datetime').value = task && task.datetime ? core.toCairoInputValue(task.datetime) : '';
+  $('t-notes').value = task ? task.notes : '';
+  $('task-dialog').showModal();
+  $('t-title').focus();
+}
+async function saveTask(ev) {
+  ev.preventDefault();
+  const title = $('t-title').value.trim();
+  if (!title) { $('te-title').textContent = 'Enter a task title.'; $('t-title').focus(); return; }
+  const data = {
+    title,
+    subject: $('t-subject').value.trim(),
+    datetime: $('t-datetime').value ? core.parseCairoLocal($('t-datetime').value) : null,
+    notes: $('t-notes').value.trim()
+  };
+  if (state.taskSource === 'cloud' && state.user) {
+    try {
+      if (state.editingTaskId) await state.backend.updateTask(state.user.uid, state.editingTaskId, data);
+      else await state.backend.createTask(state.user.uid, data);
+    } catch (e) { $('task-error').textContent = 'Could not save. Try again.'; return; }
+  } else {
+    if (state.editingTaskId) prefs.updateLocalTask(state.editingTaskId, data);
+    else prefs.createLocalTask(data);
+    state.tasks = prefs.loadLocalTasks();
+    renderTasks();
+  }
+  $('task-dialog').close();
+}
+async function toggleTask(task) {
+  const newVal = !task.completed;
+  if (state.taskSource === 'cloud' && state.user) {
+    try { await state.backend.updateTask(state.user.uid, task.id, { completed: newVal }); } catch (_) {}
+  } else {
+    prefs.updateLocalTask(task.id, { completed: newVal });
+    state.tasks = prefs.loadLocalTasks();
+    renderTasks();
+  }
+}
+function openDeleteTask(task) {
+  state.deleteTaskId = task.id;
+  $('task-confirm-text').textContent = `Delete "${task.title}"? This cannot be undone.`;
+  $('task-confirm-dialog').showModal();
+}
+async function confirmDeleteTask() {
+  const id = state.deleteTaskId;
+  if (!id) return;
+  if (state.taskSource === 'cloud' && state.user) {
+    try { await state.backend.deleteTask(state.user.uid, id); } catch (_) {}
+  } else {
+    prefs.deleteLocalTask(id);
+    state.tasks = prefs.loadLocalTasks();
+    renderTasks();
+  }
+  $('task-confirm-dialog').close();
+}
+
 
 init();
