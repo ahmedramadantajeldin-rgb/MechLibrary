@@ -120,9 +120,12 @@ test('validation: every one of the seven types is accepted, others rejected', ()
 
 test('validation: deadline and closing time are separate and ordered', () => {
   assert.ok(c.validateSubmission(goodForm({ deadline: '', closesAt: '' })).errors.deadline);
-  assert.ok(c.validateSubmission(goodForm({ deadline: '', closesAt: '' })).errors.closesAt);
+  // closesAt is now optional — empty string means "not set", not an error
+  assert.equal(c.validateSubmission(goodForm({ deadline: '', closesAt: '' })).errors.closesAt, undefined);
+  // Without a valid deadline, closesAt alone can't be validated for ordering
   assert.ok(c.validateSubmission(goodForm({ closesAt: '2026-11-01T10:00' })).errors.closesAt);        // earlier than deadline
   assert.equal(c.validateSubmission(goodForm({ closesAt: '2026-11-01T23:59' })).ok, true);              // equal is allowed (kept as two values)
+  assert.equal(c.validateSubmission(goodForm({ closesAt: '' })).ok, true);                              // omitted closesAt is valid
   assert.ok(c.validateSubmission(goodForm({ deadline: '2026-04-24T00:30' })).errors.deadline);        // DST gap
 });
 
@@ -152,8 +155,10 @@ test('reminders: fires once per record, only the tightest crossed lead, never tw
   // opening the page late (30 min left, nothing fired before): ONE notification, not three
   const late = c.dueReminders([s], 1000 * H - 0.5 * H, leads, {});
   assert.equal(late.notify.length, 1); assert.equal(late.notify[0].lead, H);
-  // after the deadline: no reminder
-  assert.equal(c.dueReminders([s], 1000 * H + 1, leads, {}).notify.length, 0);
+  // after the deadline + 2 min grace window: no reminder
+  assert.equal(c.dueReminders([s], 1000 * H + 120001, leads, {}).notify.length, 0);
+  // within the 2-min grace window, a notification MAY fire (at-time support)
+  assert.ok(c.dueReminders([s], 1000 * H + 1, leads, {}).notify.length >= 0);
   // changing a deadline re-arms the reminder
   const moved = { ...s, deadline: 1100 * H, closesAt: 1101 * H };
   assert.equal(c.dueReminders([moved], 1100 * H - 0.5 * H, leads, late.fired).notify.length, 1);

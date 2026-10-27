@@ -1,4 +1,4 @@
-﻿/* Mech Reminders — UI.
+/* Mech Reminders — UI.
  * Public visitors read PUBLISHED records. Administrators get the dashboard. Who is an administrator is NOT written
  * in this file: the owner (one fixed account) manages a list stored in Firestore (collection "admins"), and this page
  * simply listens to its own entry in that list. Everything here only decides what the page SHOWS; the real gate is
@@ -416,8 +416,8 @@ function openForm(rec) {
   $('f-code').value = rec ? rec.courseCode : '';
   $('f-desc').value = rec ? rec.description : '';
   $('f-deadline').value = rec ? core.toCairoInputValue(rec.deadline) : '';
-  // Closing time toggle
-  const hasCloses = rec && rec.closesAt != null;
+  // Closing time toggle — closesAt is truly optional
+  const hasCloses = rec && rec.closesAt != null && rec.closesAt > 0;
   $('f-closes-toggle').checked = hasCloses;
   $('f-closes-fields').hidden = !hasCloses;
   $('f-closes').value = hasCloses ? core.toCairoInputValue(rec.closesAt) : '';
@@ -805,7 +805,10 @@ async function init() {
       const dl = core.parseCairoLocal($('f-deadline').value);
       if (dl != null) $('f-closes').value = core.toCairoInputValue(dl + 3600000);
     }
-    if (!on) $('f-closes').value = '';
+    if (!on) {
+      $('f-closes').value = '';
+      $('e-closesAt').textContent = '';   // clear any stale validation error
+    }
   });
   $('f-deadline').addEventListener('change', () => {
     if ($('f-closes-toggle').checked && $('f-deadline').value) {

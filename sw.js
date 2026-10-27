@@ -14,7 +14,7 @@ const SCOPE   = self.registration.scope;          // e.g. https://user.github.io
 const abs     = (p) => new URL(p, SCOPE).href;
 
 // App-shell pages (network-first)
-const SHELL = [abs('./'), abs('index.html')];
+const SHELL = [abs('./'), abs('index.html'), abs('reminders/'), abs('reminders/index.html')];
 
 // Static assets (stale-while-revalidate)
 const ASSETS = [
@@ -26,7 +26,11 @@ const ASSETS = [
   abs('icons/android-chrome-512.png'),
   abs('icons/android-chrome-maskable-192.png'),
   abs('icons/android-chrome-maskable-512.png'),
-  abs('icons/apple-touch-icon-180.png')
+  abs('icons/apple-touch-icon-180.png'),
+  abs('reminders/reminders.css'),
+  abs('reminders/core.js'),
+  abs('reminders/preferences.js'),
+  abs('reminders/reminders.js')
 ];
 
 const NETWORK_TIMEOUT_MS = 4000;
